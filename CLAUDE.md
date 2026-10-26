@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Context
 
-Picklematic is a React + Next.js sports court booking platform. Full requirements are in `docs/plans/picklematic-mvp-plan.md`.
+GroomBox is a booking and shop-management web app for salons, barbershops, and spas in the Philippines. Requirements are in `docs/prd.md` and `docs/trd.md`; see also `docs/app-flow.md`, `docs/design-brief.md`, `docs/backend-schema.md`, and `docs/implementation-plan.md`.
 
 **Tech Stack:**
-- Frontend: React + Next.js (mobile-first responsive web)
-- Backend: Supabase (Postgres, Auth, Storage, RLS, Edge Functions)
-- Email: Resend
-- Auth: Email/password only (no OAuth)
+- Frontend: React + Vite single-page app (mobile-first responsive web), TanStack Router and Query, Tailwind with shadcn/ui
+- Backend: Supabase (Postgres, Auth, Realtime, Storage, RLS), accessed through PostgREST only; no custom API layer
+- Server-side pieces (server rendering, Edge Functions, webhooks, email, SMS): none in the first release; ask before adding any
+- Auth: email/password or Google for owners and staff; Google or Facebook for clients; anonymous sessions for guests
 
 
 ## Git Working Tree Safety
@@ -335,7 +335,7 @@ Cannot publish without:
 - Required fields: payment reference number, amount paid, method
 - Optional: notes
 - Allow re-upload during review window (`needs_resubmission` status)
-- Show warning that payments happen outside Picklematic
+- Show warning that payments happen outside GroomBox
 
 ### Admin Suspension
 - Presets: 1, 3, 7, 14, 30 days, or custom
