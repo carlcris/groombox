@@ -28,27 +28,28 @@
   measured scale requirements; when efficiency is intentionally sacrificed, document the concrete
   tradeoff and why it is necessary.
 - Do not add backward compatibility, legacy payload support, or version-bridging fallbacks while the app is in active development unless the user explicitly requests it. Keep contracts strict and update all current callers instead.
-- Read the relevant exports, callers, hooks, API routes, migrations, and types before editing.
+- Read the relevant exports, callers, hooks, routes, database functions, migrations, and types before editing.
 - If schema or environment drift is found, stop and report the exact mismatch instead of masking it with compatibility code.
 - Wildcard database projections are strictly prohibited. Never use SQL `SELECT *`, `SELECT alias.*`,
   Supabase `.select("*")`, or embedded relationship wildcards such as `relation(*)`. Every root and
   nested query must list only the columns required by its current consumers. When touching an
   existing query that contains a wildcard projection, replace that wildcard with explicit columns
   in the same change. `COUNT(*)` is an aggregate and is not considered a projection wildcard.
-- Never expose raw database, Supabase, or internal exception text to API clients. Log internal details server-side and return safe messages.
-- Every API route handling `GET`, `POST`, `PUT`, `PATCH`, or `DELETE` must use the shared activity
-  logging wrapper. Mutation payloads must be sanitized and bounded; reads must log route and query
-  context without response data. Run `npm run activity-logging:check` during feature post-flight.
+- Never show raw database, Supabase, or internal exception text to users. Database functions raise
+  coded errors; the app maps each code to a safe message.
+- Every state-changing database function must write an `activity_logs` row: actor, action, entity, and
+  sanitized, bounded, allowlisted metadata. Reads are not logged.
 - Activity display messages must use the shared formatter and allowlisted presentation fields.
   Reuse actor and entity labels or codes already loaded or returned by the operation; never add a
   database read solely to enrich an activity message. Use a generic message when context is absent.
 - Do not send insert-only identity, ownership, control number, or creation-linkage fields through update paths.
 - Business operations that write more than one row/table, perform a workflow state transition, or create dependent side effects must be transactional. Implement the core operation as a DB-owned RPC/function in `supabase/migrations/`, not as chained client/API mutations.
-- For new features, do not add Next.js API routes. Call PostgREST directly through the Supabase client
-  (table/view reads and `.rpc()` for transactional operations), with authorization enforced by RLS and
-  RPC-level checks. Add an API route only when PostgREST cannot do the job (for example secrets, service-role
-  access, third-party calls such as Resend, or signed-URL generation) and state why before adding it.
-- Never split one logical workflow operation into multiple client calls that must all succeed for data correctness. The client may send one request; the API may validate/auth and call one transactional DB operation.
+- There is no API layer. Call PostgREST directly through the Supabase client (table/view reads and
+  `.rpc()` for transactional operations), with authorization enforced by RLS and RPC-level checks.
+  Storage signed URLs are created from the client under storage policies. Anything PostgREST cannot do
+  (secrets, service-role access, third-party calls, webhooks, email, SMS, server rendering) needs a
+  server-side piece: stop, explain why, and get the product owner's approval before adding it.
+- Never split one logical workflow operation into multiple client calls that must all succeed for data correctness. The client sends one request, which calls one transactional DB operation.
 - If any step of a transactional business operation fails, no database writes from that operation may remain committed. Post-commit side effects such as notifications may run after the transaction, but they must not be required for data integrity.
 - Server data lists, reports, selects, comboboxes, and autocomplete controls must use backend filtering/sorting and bounded pagination.
 - Every implementation must balance simplicity and efficiency before coding. Prefer the simplest design that remains efficient at expected scale. If the chosen design knowingly sacrifices either, disclose the tradeoff and justification to the user before editing and wait for approval.
@@ -139,7 +140,7 @@ Hard stop:
 - File names must state the file's actual primary responsibility using established domain terminology. Do not use vague, partial, decorative, or unrelated names.
 - A React component file must use PascalCase and match its primary named export exactly, for example `NotificationContent.tsx` exporting `NotificationContent`.
 - Hook files must use the `useX.ts` or `useX.tsx` convention and match the exported hook. Service, helper, schema, type, and utility files must use a specific domain-oriented name consistent with neighboring files.
-- Framework-reserved names such as `page.tsx`, `layout.tsx`, `loading.tsx`, and `route.ts` are the only acceptable generic file names.
+- Route files under `src/routes/` follow TanStack Router's file-naming convention (for example `__root.tsx`, `index.tsx`, `b.$branchSlug.tsx`); those are the only acceptable generic or path-shaped file names.
 - When a file's primary responsibility changes, rename the file, its primary export, and every import in the same change. Never retain a stale or misleading name for compatibility or convenience.
 - Treat misleading file names as correctness defects during implementation and review.
 
@@ -182,7 +183,7 @@ Do not re-validate in an RPC/function what the UI already validates or guarantee
 - Validate each such rule once, in the UI. Do not add a matching SQLSTATE, error message, or
   test case for a rule the function does not own.
 - Keep in the function only what the UI cannot guarantee:
-  - Access control: who the caller is, suspension, ownership, tenant/venue scope, and
+  - Access control: who the caller is, suspension, ownership, tenant/branch scope, and
     permissions. Functions are callable directly through PostgREST, and `SECURITY DEFINER`
     functions bypass RLS, so these checks are never optional.
   - Guards that depend on current database state and protect other users' data, such as

@@ -32,27 +32,28 @@ GroomBox is a booking and shop-management web app for salons, barbershops, and s
   measured scale requirements; when efficiency is intentionally sacrificed, document the concrete
   tradeoff and why it is necessary.
 - Do not add backward compatibility, legacy payload support, or version-bridging fallbacks while the app is in active development unless the user explicitly requests it. Keep contracts strict and update all current callers instead.
-- Read the relevant exports, callers, hooks, API routes, migrations, and types before editing.
+- Read the relevant exports, callers, hooks, routes, database functions, migrations, and types before editing.
 - If schema or environment drift is found, stop and report the exact mismatch instead of masking it with compatibility code.
 - Wildcard database projections are strictly prohibited. Never use SQL `SELECT *`, `SELECT alias.*`,
   Supabase `.select("*")`, or embedded relationship wildcards such as `relation(*)`. Every root and
   nested query must list only the columns required by its current consumers. When touching an
   existing query that contains a wildcard projection, replace that wildcard with explicit columns
   in the same change. `COUNT(*)` is an aggregate and is not considered a projection wildcard.
-- Never expose raw database, Supabase, or internal exception text to API clients. Log internal details server-side and return safe messages.
-- Every API route handling `GET`, `POST`, `PUT`, `PATCH`, or `DELETE` must use the shared activity
-  logging wrapper. Mutation payloads must be sanitized and bounded; reads must log route and query
-  context without response data. Run `npm run activity-logging:check` during feature post-flight.
+- Never show raw database, Supabase, or internal exception text to users. Database functions raise
+  coded errors; the app maps each code to a safe message.
+- Every state-changing database function must write an `activity_logs` row: actor, action, entity, and
+  sanitized, bounded, allowlisted metadata. Reads are not logged.
 - Activity display messages must use the shared formatter and allowlisted presentation fields.
   Reuse actor and entity labels or codes already loaded or returned by the operation; never add a
   database read solely to enrich an activity message. Use a generic message when context is absent.
 - Do not send insert-only identity, ownership, control number, or creation-linkage fields through update paths.
 - Business operations that write more than one row/table, perform a workflow state transition, or create dependent side effects must be transactional. Implement the core operation as a DB-owned RPC/function in `supabase/migrations/`, not as chained client/API mutations.
-- For new features, do not add Next.js API routes. Call PostgREST directly through the Supabase client
-  (table/view reads and `.rpc()` for transactional operations), with authorization enforced by RLS and
-  RPC-level checks. Add an API route only when PostgREST cannot do the job (for example secrets, service-role
-  access, third-party calls such as Resend, or signed-URL generation) and state why before adding it.
-- Never split one logical workflow operation into multiple client calls that must all succeed for data correctness. The client may send one request; the API may validate/auth and call one transactional DB operation.
+- There is no API layer. Call PostgREST directly through the Supabase client (table/view reads and
+  `.rpc()` for transactional operations), with authorization enforced by RLS and RPC-level checks.
+  Storage signed URLs are created from the client under storage policies. Anything PostgREST cannot do
+  (secrets, service-role access, third-party calls, webhooks, email, SMS, server rendering) needs a
+  server-side piece: stop, explain why, and get the product owner's approval before adding it.
+- Never split one logical workflow operation into multiple client calls that must all succeed for data correctness. The client sends one request, which calls one transactional DB operation.
 - If any step of a transactional business operation fails, no database writes from that operation may remain committed. Post-commit side effects such as notifications may run after the transaction, but they must not be required for data integrity.
 - Server data lists, reports, selects, comboboxes, and autocomplete controls must use backend filtering/sorting and bounded pagination.
 - Every implementation must balance simplicity and efficiency before coding. Prefer the simplest design that remains efficient at expected scale. If the chosen design knowingly sacrifices either, disclose the tradeoff and justification to the user before editing and wait for approval.
@@ -143,7 +144,7 @@ Hard stop:
 - File names must state the file's actual primary responsibility using established domain terminology. Do not use vague, partial, decorative, or unrelated names.
 - A React component file must use PascalCase and match its primary named export exactly, for example `NotificationContent.tsx` exporting `NotificationContent`.
 - Hook files must use the `useX.ts` or `useX.tsx` convention and match the exported hook. Service, helper, schema, type, and utility files must use a specific domain-oriented name consistent with neighboring files.
-- Framework-reserved names such as `page.tsx`, `layout.tsx`, `loading.tsx`, and `route.ts` are the only acceptable generic file names.
+- Route files under `src/routes/` follow TanStack Router's file-naming convention (for example `__root.tsx`, `index.tsx`, `b.$branchSlug.tsx`); those are the only acceptable generic or path-shaped file names.
 - When a file's primary responsibility changes, rename the file, its primary export, and every import in the same change. Never retain a stale or misleading name for compatibility or convenience.
 - Treat misleading file names as correctness defects during implementation and review.
 
@@ -186,7 +187,7 @@ Do not re-validate in an RPC/function what the UI already validates or guarantee
 - Validate each such rule once, in the UI. Do not add a matching SQLSTATE, error message, or
   test case for a rule the function does not own.
 - Keep in the function only what the UI cannot guarantee:
-  - Access control: who the caller is, suspension, ownership, tenant/venue scope, and
+  - Access control: who the caller is, suspension, ownership, tenant/branch scope, and
     permissions. Functions are callable directly through PostgREST, and `SECURITY DEFINER`
     functions bypass RLS, so these checks are never optional.
   - Guards that depend on current database state and protect other users' data, such as
@@ -254,142 +255,175 @@ At completion, report:
 
 ## Critical Architecture Rules
 
+### Tenancy
+- The tenant is the **organization** (an owner's business). Each organization has one or more **branches**.
+- **Every tenant table carries `organization_id`** with RLS. Policies resolve the caller's organizations with a set-based membership lookup, following the RLS Predicate Performance Rule.
+- **Roles**: `owner` (whole organization), `manager` (assigned branches), `staff` (own schedule and floor view of assigned branches). Deposit review is allowed for owners, managers, and staff with `can_review_deposits`.
+- **Client accounts are platform-wide** (`profiles`). Each organization keeps its own private client record (`clients`) linked to the account; it is never visible to another organization.
+- **Restricted organizations**: membership lookups used by policies require `access_status = 'active'`. Statement tables use a separate owner policy that ignores access status. Client-facing booking functions never check access status.
+
 ### Database & Timestamps
-- **ALWAYS use `timestamptz`** for all booking-related timestamps
-- **Each venue MUST have an IANA timezone** - used for all slot/pricing calculations
-- **Use half-open intervals `[start_at, end_at)`** for slot overlap checks
+- **ALWAYS use `timestamptz`** for booking, shift, closure, and billing timestamps
+- **Each branch MUST have an IANA timezone** (default `Asia/Manila`), used for all slot and business-date calculations
+- **Use half-open intervals `[start_at, end_at)`** for overlap checks
 - **Database timestamps are the source of truth** - never rely on client-side timers for expiry
+- Money is `numeric(20,2)`; percentages are `numeric(5,2)`
+
+### Money Rules
+- **Prices, deposits, and convenience fees are calculated in the database**, never taken from the client
+- `amount_due = deposit_amount + convenience_fee`; the deposit is deducted at checkout, the fee is not
+- **A deposit is mandatory for online bookings** and must be greater than zero
+- The fee is a percentage of the booking's service total, bounded by the minimum and maximum in `platform_settings`
+- **Create exactly one `fee_entries` row when a deposit is accepted.** Never delete or reverse it when the booking is later cancelled, refunded, or a no-show
+- Staff-entered appointments and walk-ins carry no deposit and no fee
+- Money never passes through GroomBox: clients pay the shop, owners pay GroomBox against statements
 
 ### Payment Instructions
-- **MUST snapshot payment instructions** onto the booking record when reservation is created
+- **MUST snapshot payment instructions** onto the booking record when the hold is created
 - This prevents owners from editing historical payment data after bookings are made
-- Store snapshot in `payment_instructions_snapshot` field
+- Store snapshot in `payment_instructions_snapshot` field; also snapshot service names, durations, and prices in `booking_services`
 
 ### Booking State Machine
-**Never silently release slots with submitted payment proofs** - when `review_expires_at` passes after proof submission, move to `review_expired_pending_resolution` and notify all parties (player may have already paid outside platform).
+**Never silently release slots with submitted payment proofs** - when `review_expires_at` passes after proof submission, move to `review_expired_pending_resolution` and notify both sides (the client may have already paid outside the platform).
 
 **Slot blocking rules:**
-- `held` blocks slot only while `hold_expires_at > now()`
-- `payment_submitted` and `needs_resubmission` block through `review_expires_at`
-- `review_expired_pending_resolution` and `disputed` keep slots blocked indefinitely
-- `hold_expired` and `cancelled_non_refundable` release slots
+- `held` blocks the slot only while `hold_expires_at > now()`
+- `payment_submitted` and `needs_resubmission` block the slot
+- `review_expired_pending_resolution` keeps the slot blocked until staff accept or reject
+- `confirmed`, `checked_in`, `in_service`, and `completed` block the slot
+- `hold_expired`, `payment_rejected`, `cancelled`, and `no_show` release the slot
+- `waiting` (walk-in queue) has no time range until service starts
+
+**Overlap guard:** an exclusion constraint on `(staff_id, tstzrange(start_at, end_at, '[)'))` over the blocking statuses. Because a constraint cannot depend on `now()`, booking functions first move the staff member's expired holds to `hold_expired`, then insert.
 
 ### Security & RLS
-- **Owner identity files (government IDs, business docs) are private** - use short-lived signed URLs only
-- **MUST audit log every admin access** to owner identity files
-- **Suspended players cannot use existing authenticated sessions** - must block both sign-in and active sessions until `suspended_until` passes
+- **Payment proof screenshots are private** - short-lived signed URLs only, readable by the submitter and permitted reviewers
+- **Guests use Supabase anonymous sessions** protected by the bot check; upgrading links a Google or Facebook identity to the same user
+- **Public data goes through views** that expose only public columns (`public_branches`, `public_branch_services`, `public_branch_staff`)
+- **The directory is for signed-in, non-guest users only**, limited to published branches of listed organizations; a shop's own booking page never shows other shops
+- `SECURITY DEFINER` only where a function must cross the caller's RLS limits (for example a client creating a booking inside an organization), and every such function performs its own access checks
+- **Restricted organizations**: members are locked out of every branch; the owner can still read statements and payment instructions
 
 ### File Storage
 - **5 MB max file size** for all uploads
-- **MIME type validation required**
-- **Court photos: max 3 per court**, separate from venue/payment media categories
-- Support image/PDF only
+- **MIME type validation required**; images only
+- Buckets: `branch-media` (public), `payment-qr` (public), `payment-proofs` (private), `avatars` (public)
+- Paths start with `{organization_id}/` (or `{user_id}/` for avatars) so storage policies can scope them
 
 ## Common Development Patterns
 
 ### Implementing Booking Logic
 ```
-// Use transactional RPCs or database constraints to prevent overlapping bookings
-// Check conflicts with: active bookings, held bookings, review-blocked bookings, owner blocks
-// Always snapshot payment instructions at booking creation time
-// Store metadata in JSONB: proof_metadata, cancellation_metadata, policy_acceptance_metadata, dispute_metadata, notification_metadata
+// Use transactional RPCs and the exclusion constraint to prevent overlapping bookings
+// Check conflicts with: blocking bookings, unexpired holds, review-blocked bookings, staff time off, branch closures
+// Always snapshot payment instructions and services at hold creation time
+// "Any available" picks the qualifying staff member with the fewest booked minutes that day
+// Store metadata in JSONB: policy_acceptance_metadata, cancellation_metadata
 ```
 
-### Owner Application Flow
-- Owner mode is requested from **account settings, NOT registration**
-- Application collects identity/requirements only, **NOT an initial venue draft**
-- One-time approval per owner account (no per-venue approval)
-- Statuses: `draft` → `submitted` → `needs_changes` | `approved` | `rejected` | `suspended`
+### Shop Onboarding
+- Owners sign up directly; there is **no approval step**. The platform admin can restrict an organization
+- `create_organization` creates the organization, the owner membership, and the first branch in one transaction
+- Members join through single-use invite links carrying a role and branch assignments
+- A bookable staff profile does not need a login; it can be linked to a member later
 
-### Court Publishing Requirements
-Cannot publish without:
-- Approved owner status
-- 1-3 court photos
-- Sport type (pickleball, basketball, badminton, tennis)
-- Location with lat/long
+### Branch Publishing Requirements
+Cannot publish a branch without:
+- Address, city, and area
 - Operating hours
-- Fixed slot duration
-- Pricing rules
-- Payment instructions
+- At least one offered service
+- At least one bookable staff member with a shift at the branch
+- Payment instructions (method, account name, account number, QR image)
+- Terms accepted by the owner
 
-### Pricing Rules
-- Support: default hourly price, day-specific, peak/off-peak windows
-- **Must validate conflicts** for overlapping pricing rules
-- Use priority/order when multiple rules match
-- Store effective dates
+### Services, Pricing, and Commission
+- Services are defined once per organization; `branch_services` marks which a branch offers, with an optional price override
+- A service may be "starting at" priced; the final price is set at checkout
+- Deposit rule is per organization (`fixed` or `percent`), with an optional per-service override
+- Commission is the staff default percentage, overridden per staff and service, applied to each item's price **after discount**
+- Tips go fully to the staff member who performed the service
 
-### Expiry Handling (Edge Functions)
-- Edge Functions should be **idempotent**
-- Create notifications AND trigger Resend emails
-- Unpaid `held` bookings → `hold_expired` (release slots)
-- Overdue `payment_submitted` → `review_expired_pending_resolution` (keep slots blocked, notify all parties)
+### Scheduled Jobs (pg_cron)
+- Jobs run inside Postgres and must be **idempotent**
+- `expire_holds`: unpaid `held` past `hold_expires_at` → `hold_expired` (releases the slot)
+- `expire_reviews`: `payment_submitted` or `needs_resubmission` past `review_expires_at` → `review_expired_pending_resolution` (keeps the slot, notifies both sides)
+- `issue_fee_statements`: on a cut-off date, one statement per organization for unbilled entries at or above the statement minimum
+- `restrict_overdue_organizations`: statements past `due_at` → organization `restricted`
+- Notifications are in-app rows only; no email, SMS, or push in the first release
 
-### Multi-Slot Bookings
-- Players can book multiple consecutive fixed slots
-- Show full payment total AND per-slot price breakdown
-- Preserve selected slot intent through sign-in flow
-- Calculate `full_payment_amount` from pricing rules at booking time
+### Multi-Service Bookings
+- A booking is one client, one staff member, and one or more services back to back
+- Show each service's price and duration, the service total, deposit, convenience fee, amount due now, and balance due at the shop
+- Preserve the selected services, staff, and time through the guest or sign-in step
 
-### Proof Upload
-- **Require policy acceptance BEFORE allowing upload**
+### Proof of Payment
+- **Require policy acceptance BEFORE creating the hold**
 - Required fields: payment reference number, amount paid, method
-- Optional: notes
-- Allow re-upload during review window (`needs_resubmission` status)
-- Show warning that payments happen outside GroomBox
+- Optional: screenshot, note
+- Reporting payment stops the hold timer and starts the review timer
+- Allow resubmission while in `needs_resubmission`; at most one `submitted` proof per booking at a time
+- Show a warning that payments happen outside GroomBox
 
-### Admin Suspension
-- Presets: 1, 3, 7, 14, 30 days, or custom
-- Must record: reason, admin actor, affected user, `suspended_until`, history
-- Support early lifting and extension
-- **Block both sign-in AND existing authenticated sessions**
+### Walk-ins, Checkout, and Daily Close
+- Walk-ins enter as `waiting` with a per-branch, per-day queue number; `start_service` assigns staff and the time range
+- `complete_checkout` is one transactional RPC: sale, items, payments, commission, deposit deduction, and booking completion
+- A closed business day rejects new or changed sales until the owner reopens it
+- The daily close requires every visit of the day to be completed, cancelled, or marked no-show
+
+### Fee Billing and Restriction
+- One cut-off schedule for all organizations, set in `platform_settings`
+- Statements are per organization with a branch breakdown; balances under the statement minimum carry over
+- Fee entries are insert-only; corrections are `adjustment` entries added by a platform admin
+- `mark_statement_paid` restores access when no other statement is overdue
+- Restriction locks members out of the app; booking links stay live and keep accepting bookings
+
+### Platform Admins
+- Assigned manually by inserting into `platform_admins` - no invite system in the first release
 
 ## Slot Generation Rules
 
-Generate bookable slots from:
-- Court's slot duration
-- Venue/court operating hours
-- Owner blocks/offline holds (for walk-ins, maintenance, events, closures)
-- Blocked dates
-- Availability rules
-- Pricing rules (applied in venue timezone)
-- Active bookings (respecting state machine rules above)
+Generate bookable start times from:
+- Branch operating hours and closures (in the branch timezone)
+- Staff shifts at the branch and staff time off
+- Services the staff member performs
+- Total duration of the chosen services plus buffer time
+- Blocking bookings (respecting the state machine rules above)
 
 ## Demo/Seed Data
 
-Create via **service-role seed script or documented Supabase Auth admin process** (NOT ordinary SQL migrations):
-- Demo users: admin, players, pending owner, approved owner, rejected owner, suspended owner
-- Link Auth users to profiles/applications/owner records
-- Sports: pickleball, basketball, badminton, tennis
-- Venues with geolocation (address, city/area, lat/long, timezone)
-- Courts with 1-3 photos, pricing rules, operating hours
-- Separate venue/payment media
-- Bookings in ALL lifecycle states
+Create via **seed script or documented Supabase Auth admin process** (NOT migrations):
+- Users: platform admin, owners, managers, staff with and without logins, clients, a guest session
+- Two organizations: one with two branches, one with one branch and `restricted` access
+- Categories: salon, barbershop, spa
+- Service catalogue, branch offerings and overrides, staff, shifts, time off
+- Branches with address, city/area, timezone, hours, photos, payment instructions and QR
+- Bookings in ALL lifecycle states, payment proofs in every status
+- Completed sales and one closed business day
+- Fee entries, one paid statement, one issued, one overdue
 - Notifications for each user type
-- Owner offline blocks
 
-## What NOT to Build (MVP Scope)
+## What NOT to Build (First Release)
 
 - Native mobile app
-- OAuth/social login
-- Automatic payment gateway
-- Refunds/refund tracking
-- Partial deposits
-- Map-first booking UI
-- Custom arbitrary booking times
-- Multi-sport courts
-- Venue-level admin approval
-- Manual admin verification of payment instructions before publishing
-- Tournaments/leagues/payroll/SaaS subscriptions
-- Invite-based admin creation
-- Payment tracking for owner offline blocks
+- Server rendering, Edge Functions, webhooks, or any custom API layer (ask first)
+- Automatic payment gateway or in-app refunds
+- Email, SMS, push notifications, or automated reminders
+- Inventory, payroll export, memberships and packages, marketing campaigns
+- Reviews, ratings, deals, vouchers, promoted listings, favourites
+- Consolidated cross-branch reports beyond the daily close
+- Official tax receipts
+- Owner approval or identity verification
+- Invite-based platform admin creation
+- Map-first browse (list-first directory; PostGIS deferred)
 
 ## Key Gotchas
 
-1. **Never auto-release slots with submitted proofs** - player may have already paid
-2. **Public browsing allows slot selection before sign-in** - booking created after
-3. **Owner mode ≠ registration** - it's a later account settings request
-4. **One sport per court** - no multi-sport courts
-5. **Full payment only** - no partial deposits
-6. **Browser notifications are best-effort** - in-app + email are required channels
-7. **Admins manually assigned in Supabase** - no invite system in MVP
-8. **List-first browse** - not map-first (PostGIS deferred)
+1. **Never auto-release slots with submitted proofs** - the client may have already paid
+2. **Guests can book without an account** - anonymous session, upgraded later by linking Google or Facebook
+3. **Google sign-in is blocked inside Messenger and Instagram browsers** - prompt to open in the phone's browser first
+4. **The fee is owed once a deposit is accepted** - cancellations, refunds, and no-shows do not remove it
+5. **Restriction locks members, not clients** - booking links keep working while an organization is restricted
+6. **One staff member per booking** - multiple services run back to back
+7. **Deposit plus fee at booking, balance at the shop** - the deposit is deducted at checkout, the fee is not
+8. **Platform admins are assigned manually in the database**
+9. **List-first directory** - not map-first

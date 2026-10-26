@@ -18,9 +18,7 @@ Estimates are rough, for one person building with Claude. They are not commitmen
 | Task | Owner |
 |---|---|
 | Confirm or change assumptions A1–A10 in the PRD | Product owner |
-| Rewrite `CLAUDE.md` and `AGENTS.md` for GroomBox (they describe Picklematic); see TRD section 15 | Product owner, with Claude |
 | Install Docker and the Supabase CLI locally | Product owner |
-| Initialise git in the repository | Product owner |
 | Create Google and Facebook developer apps for sign-in; start Facebook app review | Product owner |
 | Create a Cloudflare Turnstile site for the guest bot check | Product owner |
 

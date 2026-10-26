@@ -191,18 +191,9 @@ In-app only. Database functions insert notification rows as part of the operatio
 - Transactional functions are tested for the success path and for a forced failure after an earlier write, proving nothing is left behind.
 - `npm run db:baseline:check` runs after every schema change.
 
-## 15. Conflicts with the repository instructions
+## 15. Repository instructions
 
-`CLAUDE.md` and `AGENTS.md` in this repository describe Picklematic, not GroomBox. Their engineering rules are adopted here: strict TypeScript, explicit column lists, transactional database functions, PostgREST over API routes, migration and baseline handling, naming, cleanup, and the testing approach. Four points conflict with decisions made for GroomBox and need the files updated:
-
-| Topic | Repository instructions | GroomBox decision |
-|---|---|---|
-| Framework | React with Next.js | React with Vite, no server rendering |
-| Sign-in | Email and password only, no social login | Google and Facebook for clients; anonymous guest sessions |
-| Expiry and email | Edge Functions and Resend | `pg_cron` in the database; no email in the first release |
-| Deposits | Full payment only, no partial deposits | Deposit plus fee at booking, balance at checkout |
-
-Until those files are rewritten for GroomBox, this document and the PRD take precedence on these four points.
+`CLAUDE.md` and `AGENTS.md` hold the engineering rules for this repository: strict TypeScript, explicit column lists, transactional database functions, PostgREST with no API layer, migration and baseline handling, naming, cleanup, and the testing approach. `CLAUDE.md` also carries the GroomBox domain rules (tenancy, money, booking states, scheduled jobs, scope). Keep them consistent with this document; if they disagree, raise it rather than picking one silently.
 
 ## 16. Deferred, with the intended approach
 
