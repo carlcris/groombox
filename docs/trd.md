@@ -1,4 +1,4 @@
-# Gleem: technical requirements (TRD)
+# GroomBox: technical requirements (TRD)
 
 Last updated: 2026-10-09
 Related: [product requirements](prd.md), [app flow](app-flow.md), [design brief](design-brief.md), [backend schema](backend-schema.md), [implementation plan](implementation-plan.md)
@@ -193,16 +193,16 @@ In-app only. Database functions insert notification rows as part of the operatio
 
 ## 15. Conflicts with the repository instructions
 
-`CLAUDE.md` and `AGENTS.md` in this repository describe Picklematic, not Gleem. Their engineering rules are adopted here: strict TypeScript, explicit column lists, transactional database functions, PostgREST over API routes, migration and baseline handling, naming, cleanup, and the testing approach. Four points conflict with decisions made for Gleem and need the files updated:
+`CLAUDE.md` and `AGENTS.md` in this repository describe Picklematic, not GroomBox. Their engineering rules are adopted here: strict TypeScript, explicit column lists, transactional database functions, PostgREST over API routes, migration and baseline handling, naming, cleanup, and the testing approach. Four points conflict with decisions made for GroomBox and need the files updated:
 
-| Topic | Repository instructions | Gleem decision |
+| Topic | Repository instructions | GroomBox decision |
 |---|---|---|
 | Framework | React with Next.js | React with Vite, no server rendering |
 | Sign-in | Email and password only, no social login | Google and Facebook for clients; anonymous guest sessions |
 | Expiry and email | Edge Functions and Resend | `pg_cron` in the database; no email in the first release |
 | Deposits | Full payment only, no partial deposits | Deposit plus fee at booking, balance at checkout |
 
-Until those files are rewritten for Gleem, this document and the PRD take precedence on these four points.
+Until those files are rewritten for GroomBox, this document and the PRD take precedence on these four points.
 
 ## 16. Deferred, with the intended approach
 

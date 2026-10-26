@@ -1,4 +1,4 @@
-# Gleem: implementation plan
+# GroomBox: implementation plan
 
 Last updated: 2026-10-09
 Related: [product requirements](prd.md), [technical requirements](trd.md), [app flow](app-flow.md), [design brief](design-brief.md), [backend schema](backend-schema.md)
@@ -18,7 +18,7 @@ Estimates are rough, for one person building with Claude. They are not commitmen
 | Task | Owner |
 |---|---|
 | Confirm or change assumptions A1–A10 in the PRD | Product owner |
-| Rewrite `CLAUDE.md` and `AGENTS.md` for Gleem (they describe Picklematic); see TRD section 15 | Product owner, with Claude |
+| Rewrite `CLAUDE.md` and `AGENTS.md` for GroomBox (they describe Picklematic); see TRD section 15 | Product owner, with Claude |
 | Install Docker and the Supabase CLI locally | Product owner |
 | Initialise git in the repository | Product owner |
 | Create Google and Facebook developer apps for sign-in; start Facebook app review | Product owner |

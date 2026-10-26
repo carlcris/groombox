@@ -1,11 +1,11 @@
-# Gleem: design brief
+# GroomBox: design brief
 
 Last updated: 2026-10-09
 Related: [product requirements](prd.md), [app flow](app-flow.md), [technical requirements](trd.md)
 
 ## 1. Direction
 
-Gleem should feel calm, clean, and trustworthy: a tool a barber, a nail technician, and a spa receptionist are all comfortable with, and that a client trusts with a deposit.
+GroomBox should feel calm, clean, and trustworthy: a tool a barber, a nail technician, and a spa receptionist are all comfortable with, and that a client trusts with a deposit.
 
 | Principle | What it means on screen |
 |---|---|
@@ -29,7 +29,7 @@ Colours come from the Tailwind palette. Components use semantic tokens (the shad
 | Primary | `teal-700` | `#0f766e` | Primary buttons, links, active navigation, selected states |
 | Primary hover | `teal-800` | `#115e59` | Hover and pressed |
 | Primary tint | `teal-50` | `#f0fdfa` | Selected rows, soft highlights |
-| Accent | `amber-400` | `#fbbf24` | The "gleam": the logo mark, highlights, the countdown ring. Never a text colour on white |
+| Accent | `amber-400` | `#fbbf24` | The highlight colour: the logo mark, highlights, the countdown ring. Never a text colour on white |
 
 ### Neutrals (warm)
 
@@ -144,7 +144,7 @@ Breakpoints: phone below `md` (768px), tablet from `md`, desktop from `lg` (1024
 
 ## 5. Components
 
-Built on shadcn/ui. Gleem-specific patterns:
+Built on shadcn/ui. GroomBox-specific patterns:
 
 | Component | Specification |
 |---|---|
@@ -204,16 +204,16 @@ Icons are Lucide, 20px in controls and 24px in navigation, one stroke width thro
 - Plain, friendly English. Short sentences. No jargon: "deposit", "booking", "walk-in", "daily close".
 - Say what happens next: "We'll hold your slot for 15 minutes while you pay."
 - Be exact about money: "Pay ₱245 now. ₱1,300 is due at the shop."
-- Be clear that payment happens outside Gleem: "Pay the shop directly, then tell us your reference number."
+- Be clear that payment happens outside GroomBox: "Pay the shop directly, then tell us your reference number."
 - Errors say what went wrong and what to do; they never blame the user.
 - Currency is written as ₱ with thousands separators and no decimals unless the amount has centavos.
 - Dates read "Sat, 10 Oct"; times use the 12-hour clock, "2:30 PM".
 
 ## 10. Brand basics
 
-- **Name**: Gleem, capitalised, never all caps.
-- **Mark**: a simple four-point sparkle in `amber-400` beside the wordmark in Outfit 600, `stone-900`. On a `teal-700` background the wordmark is white.
-- **Shop branding**: a branch page shows the shop's own name, logo, and photos prominently. Gleem's mark appears small in the footer as "Bookings by Gleem". The shop is the brand the client came for.
+- **Name**: GroomBox, one word with a capital G and B. Never all caps, never "Groom Box".
+- **Mark**: a rounded square (the box) in `teal-700` holding a small four-point sparkle in `amber-400`, beside the wordmark in Outfit 600, `stone-900`. On a `teal-700` background the box outline and the wordmark are white.
+- **Shop branding**: a branch page shows the shop's own name, logo, and photos prominently. GroomBox's mark appears small in the footer as "Bookings by GroomBox". The shop is the brand the client came for.
 
 ## 11. Before any screen ships
 

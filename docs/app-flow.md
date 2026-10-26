@@ -1,4 +1,4 @@
-# Gleem: app flow
+# GroomBox: app flow
 
 Last updated: 2026-10-09
 Related: [product requirements](prd.md), [technical requirements](trd.md), [design brief](design-brief.md), [backend schema](backend-schema.md)
@@ -9,10 +9,10 @@ Related: [product requirements](prd.md), [technical requirements](trd.md), [desi
 |---|---|---|
 | Guest or client | A branch link shared in Messenger or Instagram, or a QR code in the shop | Branch booking page |
 | Guest or client | An organization link | Organization page listing branches |
-| Client | Opening Gleem directly | Client home (sign-in if needed) |
-| Member | Opening Gleem directly | Floor view of their branch |
+| Client | Opening GroomBox directly | Client home (sign-in if needed) |
+| Member | Opening GroomBox directly | Floor view of their branch |
 | Owner | First visit | Sign-up, then organization setup |
-| Platform admin | Opening Gleem directly | Admin statements list |
+| Platform admin | Opening GroomBox directly | Admin statements list |
 
 After sign-in, a user with both a client profile and a membership lands on the shop side and can switch to the client area from the account menu.
 
@@ -66,7 +66,7 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/admin/statements` | Statements across organizations |
 | `/admin/statements/:id` | Statement detail, mark paid, add adjustment |
 | `/admin/organizations` | Organizations, restrict or restore |
-| `/admin/settings` | Fee, cut-off, grace period, statement minimum, Gleem's payment details |
+| `/admin/settings` | Fee, cut-off, grace period, statement minimum, GroomBox's payment details |
 
 ## 3. Navigation
 
@@ -151,7 +151,7 @@ The convenience fee entry is created on the move to `confirmed` from a deposit r
 
 1. A badge on "Deposits" shows the number waiting. Bookings flagged for resolution sort first.
 2. The reviewer opens one: client, services, time, amount due, and the reported reference number, amount, method, and screenshot.
-3. The reviewer checks the shop's e-wallet outside Gleem.
+3. The reviewer checks the shop's e-wallet outside GroomBox.
 4. They choose **Accept**, **Ask to resubmit** (with a note), or **Reject** (with a reason).
 5. The client's booking page updates live and a notification is created.
 
@@ -203,7 +203,7 @@ A checklist on the floor view shows any step skipped. A branch cannot be publish
 
 1. Each accepted deposit adds a fee entry to the organization's unbilled balance, visible under "Billing".
 2. On a cut-off date, a statement is issued and the owner is notified in the app.
-3. The owner opens the statement: entries, branch breakdown, total, due date, and how to pay Gleem.
+3. The owner opens the statement: entries, branch breakdown, total, due date, and how to pay GroomBox.
 4. The owner pays outside the app and may enter a payment reference for the admin to see.
 5. The platform admin checks the payment and marks the statement paid.
 

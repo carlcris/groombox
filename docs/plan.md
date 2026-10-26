@@ -1,10 +1,10 @@
-# Gleem: product and build plan
+# GroomBox: product and build plan
 
 Last updated: 2026-10-06
 
 > This is the original summary plan. The detailed documents written from it on 2026-10-09 are the source of truth where they differ: [PRD](prd.md), [TRD](trd.md), [app flow](app-flow.md), [design brief](design-brief.md), [backend schema](backend-schema.md), [implementation plan](implementation-plan.md).
 
-Gleem is a management app for salons, barbershops, and spas in the Philippines. It is free for shop owners. Revenue comes from a convenience fee paid by the client on each deposit-secured online booking.
+GroomBox is a management app for salons, barbershops, and spas in the Philippines. It is free for shop owners. Revenue comes from a convenience fee paid by the client on each deposit-secured online booking.
 
 Week figures are rough estimates for one person building with Claude, not commitments.
 
@@ -38,7 +38,7 @@ Note: the earlier positioning promised "no marketplace showing rival shops". The
 
 - The fee is attached to a deposit, so the owner gets no-show protection for free and has a reason to send clients through the booking link.
 - The fee is added on top of the deposit. The client pays deposit plus fee to the shop in one payment.
-- Gleem then bills the owner for the fees the shop collected, at a configurable cut-off (for example weekly, twice a month, or monthly).
+- GroomBox then bills the owner for the fees the shop collected, at a configurable cut-off (for example weekly, twice a month, or monthly).
 - The fee scales with the ticket: a percentage with a floor and a cap (starting point: 3%, ₱10 minimum, ₱50 maximum).
 - Walk-ins are free. The queue and commission tools are the hook.
 - A second revenue line comes later: a paid tier for payroll and inventory, or a margin on in-shop QR payments.
@@ -70,8 +70,8 @@ Five surfaces on one codebase:
 | Client area | Clients, signed in | Manage own profile; browse shops, branches, and services; book; see upcoming and past bookings and deposit status; cancel or rebook |
 | Booking page | Clients, from a link in Messenger, Instagram, or a QR code at the shop | Pick service, staff, and time; see how to pay the deposit to the shop; see booking status |
 | Floor view | Front desk and staff, on a phone or tablet | Today's appointments and walk-ins in one queue; check in, start, finish, check out |
-| Owner dashboard | Owner | Services, staff, hours, commission rates, deposit rules, the end-of-day close, and fee statements from Gleem |
-| Platform admin | Gleem | Fee rate, cut-off schedule, statements, marking statements paid |
+| Owner dashboard | Owner | Services, staff, hours, commission rates, deposit rules, the end-of-day close, and fee statements from GroomBox |
+| Platform admin | GroomBox | Fee rate, cut-off schedule, statements, marking statements paid |
 
 ## First release scope
 
@@ -84,7 +84,7 @@ Five surfaces on one codebase:
 - Browse, inside the client area only: a directory of shops and branches with their services and prices, with search and filter by area and category. Shops are listed by default.
 - Booking link with live availability.
 - Manual deposits: the booking page shows the amount due (deposit plus convenience fee) and the shop's own GCash or Maya details. The booking waits as "awaiting deposit" until staff review and confirm the payment. Unpaid holds expire after a time the owner sets.
-- Fee billing: each confirmed deposit adds its fee to the shop's running balance. At each cut-off Gleem issues the owner a statement listing the bookings and the total due. The owner pays Gleem manually and a platform admin marks the statement paid.
+- Fee billing: each confirmed deposit adds its fee to the shop's running balance. At each cut-off GroomBox issues the owner a statement listing the bookings and the total due. The owner pays GroomBox manually and a platform admin marks the statement paid.
 - Platform admin screen: set the fee rate, cut-off schedule, and grace period; view statements across shops; mark statements paid.
 - Calendar plus walk-in queue in one view.
 - Checkout: final price, add-ons, discount, tip, payment method recorded (cash, e-wallet, card), deposit deducted.
@@ -142,7 +142,7 @@ The shop directory sits behind client sign-in, so it is not meant to be found th
 
 ## Tenancy
 
-Gleem is multi-tenant. The tenant is the **organization**: an owner's business. Each organization has one or more **branches** (its physical facilities).
+GroomBox is multi-tenant. The tenant is the **organization**: an owner's business. Each organization has one or more **branches** (its physical facilities).
 
 | Level | What lives here |
 |---|---|
@@ -202,14 +202,14 @@ The availability engine in phase 2 is the hardest piece: it has to handle staff 
 1. **Clients will pay the deposit plus fee**: share of bookings where the payment arrives, by fee size.
 2. **Owners pay their statements**: share of statements paid, and how late.
 3. **Owners will push the link**: share of a shop's visits that come through the app, with 25% as the target.
-4. **The daily close gets used every night**: this is what makes the shop dependent on Gleem.
+4. **The daily close gets used every night**: this is what makes the shop dependent on GroomBox.
 
 ## Open decisions
 
 ### How the deposit reaches the shop (needed when payments are integrated)
 
-- **Split at the provider (recommended)**: each shop gets a sub-account with the payment provider; the deposit goes to the shop and the fee to Gleem. Gleem never holds client money. Xendit advertises a platform product for this; its current terms, and whether PayMongo has an equivalent, are not yet verified.
-- **Collect and remit**: all money lands in Gleem's account and shops are paid out weekly. Simpler to build, but this arrangement may need central bank registration as a payment system operator. Confirm with the provider and a lawyer.
+- **Split at the provider (recommended)**: each shop gets a sub-account with the payment provider; the deposit goes to the shop and the fee to GroomBox. GroomBox never holds client money. Xendit advertises a platform product for this; its current terms, and whether PayMongo has an equivalent, are not yet verified.
+- **Collect and remit**: all money lands in GroomBox's account and shops are paid out weekly. Simpler to build, but this arrangement may need central bank registration as a payment system operator. Confirm with the provider and a lawyer.
 
 ### Where payment and messaging secrets run (needed when payments or SMS are added)
 
@@ -217,7 +217,7 @@ Supabase Edge Functions for those calls only, or pure database with the `pg_net`
 
 ### Still to verify
 
-- Which local competitors, if any, are accredited for official tax receipts, and whether shops will expect that from Gleem.
+- Which local competitors, if any, are accredited for official tax receipts, and whether shops will expect that from GroomBox.
 - Whether clients can complete a booking comfortably from inside Messenger and Instagram's in-app browsers.
 
 ## Risks
@@ -225,7 +225,7 @@ Supabase Edge Functions for those calls only, or pure database with the `pg_net`
 - **Leakage**: regulars message their stylist directly to skip the fee. Mitigation: deposits give the owner a reason to require the link.
 - **Free riders**: walk-in-heavy shops use the tools and generate few fees. Mitigation: the later paid tier or payments margin.
 - **Fee resistance on cheap services**: a flat fee is a large share of a ₱250 haircut. Mitigation: percentage with floor and cap.
-- **Owners not paying statements**: the shop holds the fee money and Gleem collects after the fact. Mitigation: short cut-off periods and a clear rule for unpaid statements.
+- **Owners not paying statements**: the shop holds the fee money and GroomBox collects after the fact. Mitigation: short cut-off periods and a clear rule for unpaid statements.
 - **Competitor response**: Parlon deepening its merchant tools, or Fresha adding local e-wallets and peso pricing.
 
 ## Next step

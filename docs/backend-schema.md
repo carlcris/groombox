@@ -1,4 +1,4 @@
-# Gleem: backend schema
+# GroomBox: backend schema
 
 Last updated: 2026-10-09
 Related: [technical requirements](trd.md), [product requirements](prd.md), [app flow](app-flow.md)
@@ -47,7 +47,7 @@ This is the design the first migrations are written from. Exact SQL lives in `su
 | `cutoff_weekday` | `smallint` | Used when weekly |
 | `grace_period_days` | `smallint` | Default 7 |
 | `statement_minimum` | `numeric(20,2)` | Default 100.00 |
-| `payment_instructions` | `jsonb` | How owners pay Gleem |
+| `payment_instructions` | `jsonb` | How owners pay GroomBox |
 | `updated_at`, `updated_by` | | |
 
 ### `platform_admins`

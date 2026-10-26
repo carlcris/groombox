@@ -1,11 +1,11 @@
-# Gleem: product requirements (PRD)
+# GroomBox: product requirements (PRD)
 
 Last updated: 2026-10-09
 Related: [technical requirements](trd.md), [app flow](app-flow.md), [design brief](design-brief.md), [backend schema](backend-schema.md), [implementation plan](implementation-plan.md)
 
 ## 1. Summary
 
-Gleem is a booking and shop-management web app for salons, barbershops, and spas in the Philippines. It is free for shop owners. Clients pay a convenience fee on top of the deposit when they book online; the shop collects it with the deposit, and Gleem bills the owner for the accumulated fees at a regular cut-off.
+GroomBox is a booking and shop-management web app for salons, barbershops, and spas in the Philippines. It is free for shop owners. Clients pay a convenience fee on top of the deposit when they book online; the shop collects it with the deposit, and GroomBox bills the owner for the accumulated fees at a regular cut-off.
 
 ## 2. Problem
 
@@ -20,7 +20,7 @@ Gleem is a booking and shop-management web app for salons, barbershops, and spas
 | Clients will pay a deposit plus fee to book | Share of online bookings that reach a confirmed deposit |
 | Owners pay their fee statements | Share of statements paid, and days late |
 | Owners send clients through the booking link | Share of a shop's visits booked online; target 25% |
-| The shop runs its day in Gleem | Share of business days with a completed daily close |
+| The shop runs its day in GroomBox | Share of business days with a completed daily close |
 
 ## 4. Non-goals for the first release
 
@@ -42,7 +42,7 @@ Gleem is a booking and shop-management web app for salons, barbershops, and spas
 | Staff | A stylist, barber, or therapist with a login | Own schedule; floor view of assigned branches |
 | Manager | Front desk or branch manager | Everything at assigned branches, including deposit review and the daily close |
 | Owner | The business owner | Everything in the organization, across all branches |
-| Platform admin | Gleem | Fee settings, statements, organization access |
+| Platform admin | GroomBox | Fee settings, statements, organization access |
 
 A bookable staff member does not need a login. Staff who only appear on the calendar are profiles managed by the owner or a manager.
 
@@ -107,7 +107,7 @@ Priority: **M** = must have for the pilot, **S** = should have, **C** = could mo
 | DEP-4 | A manager, owner, or permitted staff member accepts the payment, rejects it, or asks the client to resubmit | M |
 | DEP-5 | A booking with a reported payment is never released automatically; if the review time runs out it is flagged for resolution and keeps its slot | M |
 | DEP-6 | An unpaid hold that runs out releases the slot | M |
-| DEP-7 | Refunds happen outside Gleem between the shop and the client; the booking records the outcome | S |
+| DEP-7 | Refunds happen outside GroomBox between the shop and the client; the booking records the outcome | S |
 
 ### 7.5 Floor
 
@@ -169,7 +169,7 @@ Nothing is sent outside the app in the first release.
 | FEE-4 | Staff-entered appointments and walk-ins carry no fee | M |
 | FEE-5 | One cut-off schedule for all organizations, set by the platform admin | M |
 | FEE-6 | At each cut-off, one statement per organization lists the fee entries, with a breakdown by branch | M |
-| FEE-7 | The owner sees statements and how to pay Gleem, and pays outside the app | M |
+| FEE-7 | The owner sees statements and how to pay GroomBox, and pays outside the app | M |
 | FEE-8 | A platform admin marks a statement paid, with a payment reference | M |
 | FEE-9 | A balance below the statement minimum carries into the next period | S |
 | FEE-10 | A platform admin can add an adjustment entry to correct a statement | S |
@@ -197,7 +197,7 @@ Consequence, accepted: while restricted, nobody can review deposits. Reported pa
 ## 8. Business rules
 
 1. A deposit is required for every online booking. The owner cannot set it to zero.
-2. Money never passes through Gleem. Clients pay the shop; owners pay Gleem against statements.
+2. Money never passes through GroomBox. Clients pay the shop; owners pay GroomBox against statements.
 3. The amount due at booking is deposit plus convenience fee. The deposit is deducted at checkout; the fee is not.
 4. Prices, deposits, and fees are calculated by the database, never taken from the browser.
 5. Payment details are copied onto the booking when it is made, so later edits do not change what the client was told.
@@ -237,7 +237,7 @@ These were open after the plan review. Each is built as stated here unless chang
 
 ## 11. Outside the code
 
-- **Tax**: Gleem invoices owners for fees the shop collected. Confirm invoicing and receipt duties with an accountant.
+- **Tax**: GroomBox invoices owners for fees the shop collected. Confirm invoicing and receipt duties with an accountant.
 - **Data privacy**: the app stores personal data and notes about clients. It needs a privacy policy, consent at booking, and a check on registration duties.
 - **Terms for owners**: must state that shops are listed in the directory by default, the fee rules, and the restriction rule.
 - **Facebook login**: needs app review and business verification before public use.
