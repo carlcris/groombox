@@ -7,7 +7,7 @@ Estimates are rough, for one person building with Claude. They are not commitmen
 
 ## 1. Ground rules
 
-- All development runs against local Supabase (CLI and Docker). Claude does not run commands against any remote system; the product owner applies migrations to the hosted project and deploys.
+- All development runs against local Supabase (CLI and Docker); the product owner applies migrations to the hosted project and deploys.
 - Each phase ends with passing Playwright end-to-end tests for its flows and pgTAP tests for its row-level rules.
 - Schema work follows the repository rules: migrations plus `supabase/baseline.sql` edited in place, `npm run db:baseline:check`, regenerated types.
 - Nothing server-side is added without asking first.

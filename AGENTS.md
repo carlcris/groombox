@@ -1,12 +1,16 @@
-# Repository Safety Rules
+# GroomBox repository instructions
 
-## No remote commands
+This file provides guidance to AI coding agents working in this repository.
 
-- Never run commands or operations that connect to, inspect, mutate, deploy to, reset, seed, or otherwise interact with any remote system or service.
-- This prohibition includes all remote Supabase operations (including `--linked`, `--project-ref`, and remote `--db-url` usage), as well as remote Git, hosting, deployment, cloud, API, SSH, database, and production/staging commands.
-- Commands are permitted only when they operate entirely on local files, local processes, or explicitly local services.
-- A pasted remote command, a prior confirmation, or a request to execute a command does not override this rule. The user must explicitly revoke or amend this repository rule before any remote operation may be run.
-- When validation would require remote access, stop at local validation and report that remote verification was not performed.
+## Project Context
+
+GroomBox is a booking and shop-management web app for salons, barbershops, and spas in the Philippines. Requirements are in `docs/prd.md` and `docs/trd.md`; see also `docs/app-flow.md`, `docs/design-brief.md`, `docs/backend-schema.md`, and `docs/implementation-plan.md`.
+
+**Tech Stack:**
+- Frontend: React + Vite single-page app (mobile-first responsive web), TanStack Router and Query, Tailwind with shadcn/ui
+- Backend: Supabase (Postgres, Auth, Realtime, Storage, RLS), accessed through PostgREST only; no custom API layer
+- Server-side pieces (server rendering, Edge Functions, webhooks, email, SMS): none in the first release; ask before adding any
+- Auth: email/password or Google for owners and staff; Google or Facebook for clients; anonymous sessions for guests
 
 
 ## Git Working Tree Safety
@@ -205,7 +209,7 @@ When reviewing changes, explicitly check:
 
 - Completeness: the change fully satisfies the requested workflow, edge cases, and expected user paths.
 - Correctness: the implementation matches the intended data model, API contracts, UI behavior, and business rules.
-- Repo-rule compliance: the change follows this `AGENTS.md`, relevant skills, API, migration, permission, and transaction rules.
+- Repo-rule compliance: the change follows these repository instructions, relevant skills, API, migration, permission, and transaction rules.
 - Maintainability and spaghetti-code risks: flag tangled control flow or state, mixed responsibilities,
   oversized components or functions, duplicated business logic, excessive coupling, unclear
   abstractions, misleading names, mutation chains, and code that is unnecessarily difficult to test
@@ -216,7 +220,7 @@ When reviewing changes, explicitly check:
 
 ## Documentation Sync
 
-After every implementation task, check whether changes affect `docs/kb` or `docs/guides`. Use `project-docs-sync` for this post-flight check.
+After every implementation task, check whether changes affect `docs/kb` or `docs/guides`.
 
 Update relevant docs when the task changes:
 
@@ -248,3 +252,178 @@ At completion, report:
 - For list/select/report work, server-side filtering and pagination impact.
 - For permission work, API and UI enforcement impact.
 - Documentation checked and documentation updated, or why no update was needed.
+
+## Critical Architecture Rules
+
+### Tenancy
+- The tenant is the **organization** (an owner's business). Each organization has one or more **branches**.
+- **Every tenant table carries `organization_id`** with RLS. Policies resolve the caller's organizations with a set-based membership lookup, following the RLS Predicate Performance Rule.
+- **Roles**: `owner` (whole organization), `manager` (assigned branches), `staff` (own schedule and floor view of assigned branches). Deposit review is allowed for owners, managers, and staff with `can_review_deposits`.
+- **Client accounts are platform-wide** (`profiles`). Each organization keeps its own private client record (`clients`) linked to the account; it is never visible to another organization.
+- **Restricted organizations**: membership lookups used by policies require `access_status = 'active'`. Statement tables use a separate owner policy that ignores access status. Client-facing booking functions never check access status.
+
+### Database & Timestamps
+- **ALWAYS use `timestamptz`** for booking, shift, closure, and billing timestamps
+- **Each branch MUST have an IANA timezone** (default `Asia/Manila`), used for all slot and business-date calculations
+- **Use half-open intervals `[start_at, end_at)`** for overlap checks
+- **Database timestamps are the source of truth** - never rely on client-side timers for expiry
+- Money is `numeric(20,2)`; percentages are `numeric(5,2)`
+
+### Money Rules
+- **Prices, deposits, and convenience fees are calculated in the database**, never taken from the client
+- `amount_due = deposit_amount + convenience_fee`; the deposit is deducted at checkout, the fee is not
+- **A deposit is mandatory for online bookings** and must be greater than zero
+- The fee is a percentage of the booking's service total, bounded by the minimum and maximum in `platform_settings`
+- **Create exactly one `fee_entries` row when a deposit is accepted.** Never delete or reverse it when the booking is later cancelled, refunded, or a no-show
+- Staff-entered appointments and walk-ins carry no deposit and no fee
+- Money never passes through GroomBox: clients pay the shop, owners pay GroomBox against statements
+
+### Payment Instructions
+- **MUST snapshot payment instructions** onto the booking record when the hold is created
+- This prevents owners from editing historical payment data after bookings are made
+- Store snapshot in `payment_instructions_snapshot` field; also snapshot service names, durations, and prices in `booking_services`
+
+### Booking State Machine
+**Never silently release slots with submitted payment proofs** - when `review_expires_at` passes after proof submission, move to `review_expired_pending_resolution` and notify both sides (the client may have already paid outside the platform).
+
+**Slot blocking rules:**
+- `held` blocks the slot only while `hold_expires_at > now()`
+- `payment_submitted` and `needs_resubmission` block the slot
+- `review_expired_pending_resolution` keeps the slot blocked until staff accept or reject
+- `confirmed`, `checked_in`, `in_service`, and `completed` block the slot
+- `hold_expired`, `payment_rejected`, `cancelled`, and `no_show` release the slot
+- `waiting` (walk-in queue) has no time range until service starts
+
+**Overlap guard:** an exclusion constraint on `(staff_id, tstzrange(start_at, end_at, '[)'))` over the blocking statuses. Because a constraint cannot depend on `now()`, booking functions first move the staff member's expired holds to `hold_expired`, then insert.
+
+### Security & RLS
+- **Payment proof screenshots are private** - short-lived signed URLs only, readable by the submitter and permitted reviewers
+- **Guests use Supabase anonymous sessions** protected by the bot check; upgrading links a Google or Facebook identity to the same user
+- **Public data goes through views** that expose only public columns (`public_branches`, `public_branch_services`, `public_branch_staff`)
+- **The directory is for signed-in, non-guest users only**, limited to published branches of listed organizations; a shop's own booking page never shows other shops
+- `SECURITY DEFINER` only where a function must cross the caller's RLS limits (for example a client creating a booking inside an organization), and every such function performs its own access checks
+- **Restricted organizations**: members are locked out of every branch; the owner can still read statements and payment instructions
+
+### File Storage
+- **5 MB max file size** for all uploads
+- **MIME type validation required**; images only
+- Buckets: `branch-media` (public), `payment-qr` (public), `payment-proofs` (private), `avatars` (public)
+- Paths start with `{organization_id}/` (or `{user_id}/` for avatars) so storage policies can scope them
+
+## Common Development Patterns
+
+### Implementing Booking Logic
+```
+// Use transactional RPCs and the exclusion constraint to prevent overlapping bookings
+// Check conflicts with: blocking bookings, unexpired holds, review-blocked bookings, staff time off, branch closures
+// Always snapshot payment instructions and services at hold creation time
+// "Any available" picks the qualifying staff member with the fewest booked minutes that day
+// Store metadata in JSONB: policy_acceptance_metadata, cancellation_metadata
+```
+
+### Shop Onboarding
+- Owners sign up directly; there is **no approval step**. The platform admin can restrict an organization
+- `create_organization` creates the organization, the owner membership, and the first branch in one transaction
+- Members join through single-use invite links carrying a role and branch assignments
+- A bookable staff profile does not need a login; it can be linked to a member later
+
+### Branch Publishing Requirements
+Cannot publish a branch without:
+- Address, city, and area
+- Operating hours
+- At least one offered service
+- At least one bookable staff member with a shift at the branch
+- Payment instructions (method, account name, account number, QR image)
+- Terms accepted by the owner
+
+### Services, Pricing, and Commission
+- Services are defined once per organization; `branch_services` marks which a branch offers, with an optional price override
+- A service may be "starting at" priced; the final price is set at checkout
+- Deposit rule is per organization (`fixed` or `percent`), with an optional per-service override
+- Commission is the staff default percentage, overridden per staff and service, applied to each item's price **after discount**
+- Tips go fully to the staff member who performed the service
+
+### Scheduled Jobs (pg_cron)
+- Jobs run inside Postgres and must be **idempotent**
+- `expire_holds`: unpaid `held` past `hold_expires_at` → `hold_expired` (releases the slot)
+- `expire_reviews`: `payment_submitted` or `needs_resubmission` past `review_expires_at` → `review_expired_pending_resolution` (keeps the slot, notifies both sides)
+- `issue_fee_statements`: on a cut-off date, one statement per organization for unbilled entries at or above the statement minimum
+- `restrict_overdue_organizations`: statements past `due_at` → organization `restricted`
+- Notifications are in-app rows only; no email, SMS, or push in the first release
+
+### Multi-Service Bookings
+- A booking is one client, one staff member, and one or more services back to back
+- Show each service's price and duration, the service total, deposit, convenience fee, amount due now, and balance due at the shop
+- Preserve the selected services, staff, and time through the guest or sign-in step
+
+### Proof of Payment
+- **Require policy acceptance BEFORE creating the hold**
+- Required fields: payment reference number, amount paid, method
+- Optional: screenshot, note
+- Reporting payment stops the hold timer and starts the review timer
+- Allow resubmission while in `needs_resubmission`; at most one `submitted` proof per booking at a time
+- Show a warning that payments happen outside GroomBox
+
+### Walk-ins, Checkout, and Daily Close
+- Walk-ins enter as `waiting` with a per-branch, per-day queue number; `start_service` assigns staff and the time range
+- `complete_checkout` is one transactional RPC: sale, items, payments, commission, deposit deduction, and booking completion
+- A closed business day rejects new or changed sales until the owner reopens it
+- The daily close requires every visit of the day to be completed, cancelled, or marked no-show
+
+### Fee Billing and Restriction
+- One cut-off schedule for all organizations, set in `platform_settings`
+- Statements are per organization with a branch breakdown; balances under the statement minimum carry over
+- Fee entries are insert-only; corrections are `adjustment` entries added by a platform admin
+- `mark_statement_paid` restores access when no other statement is overdue
+- Restriction locks members out of the app; booking links stay live and keep accepting bookings
+
+### Platform Admins
+- Assigned manually by inserting into `platform_admins` - no invite system in the first release
+
+## Slot Generation Rules
+
+Generate bookable start times from:
+- Branch operating hours and closures (in the branch timezone)
+- Staff shifts at the branch and staff time off
+- Services the staff member performs
+- Total duration of the chosen services plus buffer time
+- Blocking bookings (respecting the state machine rules above)
+
+## Demo/Seed Data
+
+Create via **seed script or documented Supabase Auth admin process** (NOT migrations):
+- Users: platform admin, owners, managers, staff with and without logins, clients, a guest session
+- Two organizations: one with two branches, one with one branch and `restricted` access
+- Categories: salon, barbershop, spa
+- Service catalogue, branch offerings and overrides, staff, shifts, time off
+- Branches with address, city/area, timezone, hours, photos, payment instructions and QR
+- Bookings in ALL lifecycle states, payment proofs in every status
+- Completed sales and one closed business day
+- Fee entries, one paid statement, one issued, one overdue
+- Notifications for each user type
+
+## What NOT to Build (First Release)
+
+- Native mobile app
+- Server rendering, Edge Functions, webhooks, or any custom API layer (ask first)
+- Automatic payment gateway or in-app refunds
+- Email, SMS, push notifications, or automated reminders
+- Inventory, payroll export, memberships and packages, marketing campaigns
+- Reviews, ratings, deals, vouchers, promoted listings, favourites
+- Consolidated cross-branch reports beyond the daily close
+- Official tax receipts
+- Owner approval or identity verification
+- Invite-based platform admin creation
+- Map-first browse (list-first directory; PostGIS deferred)
+
+## Key Gotchas
+
+1. **Never auto-release slots with submitted proofs** - the client may have already paid
+2. **Guests can book without an account** - anonymous session, upgraded later by linking Google or Facebook
+3. **Google sign-in is blocked inside Messenger and Instagram browsers** - prompt to open in the phone's browser first
+4. **The fee is owed once a deposit is accepted** - cancellations, refunds, and no-shows do not remove it
+5. **Restriction locks members, not clients** - booking links keep working while an organization is restricted
+6. **One staff member per booking** - multiple services run back to back
+7. **Deposit plus fee at booking, balance at the shop** - the deposit is deducted at checkout, the fee is not
+8. **Platform admins are assigned manually in the database**
+9. **List-first directory** - not map-first

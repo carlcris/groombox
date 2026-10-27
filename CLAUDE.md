@@ -1,6 +1,6 @@
-# CLAUDE.md
+# GroomBox repository instructions
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents working in this repository.
 
 ## Project Context
 
@@ -209,7 +209,7 @@ When reviewing changes, explicitly check:
 
 - Completeness: the change fully satisfies the requested workflow, edge cases, and expected user paths.
 - Correctness: the implementation matches the intended data model, API contracts, UI behavior, and business rules.
-- Repo-rule compliance: the change follows this `AGENTS.md`, relevant skills, API, migration, permission, and transaction rules.
+- Repo-rule compliance: the change follows these repository instructions, relevant skills, API, migration, permission, and transaction rules.
 - Maintainability and spaghetti-code risks: flag tangled control flow or state, mixed responsibilities,
   oversized components or functions, duplicated business logic, excessive coupling, unclear
   abstractions, misleading names, mutation chains, and code that is unnecessarily difficult to test
@@ -220,7 +220,7 @@ When reviewing changes, explicitly check:
 
 ## Documentation Sync
 
-After every implementation task, check whether changes affect `docs/kb` or `docs/guides`. Use `project-docs-sync` for this post-flight check.
+After every implementation task, check whether changes affect `docs/kb` or `docs/guides`.
 
 Update relevant docs when the task changes:
 

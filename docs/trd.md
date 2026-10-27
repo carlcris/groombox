@@ -181,7 +181,7 @@ In-app only. Database functions insert notification rows as part of the operatio
 ## 13. Environments
 
 - **Local**: Supabase CLI with Docker. All development and tests run here.
-- **Hosted**: one Supabase project and one static site for the pilot. Repository rules forbid Claude from running any command against a remote system, so the product owner applies migrations and deploys.
+- **Hosted**: one Supabase project and one static site for the pilot. The product owner applies migrations and deploys.
 - Environment variables in the app are limited to the Supabase URL and the public anon key.
 
 ## 14. Testing
@@ -193,7 +193,7 @@ In-app only. Database functions insert notification rows as part of the operatio
 
 ## 15. Repository instructions
 
-`CLAUDE.md` and `AGENTS.md` hold the engineering rules for this repository: strict TypeScript, explicit column lists, transactional database functions, PostgREST with no API layer, migration and baseline handling, naming, cleanup, and the testing approach. `CLAUDE.md` also carries the GroomBox domain rules (tenancy, money, booking states, scheduled jobs, scope). Keep them consistent with this document; if they disagree, raise it rather than picking one silently.
+`CLAUDE.md` and `AGENTS.md` are identical and hold the rules for this repository: strict TypeScript, explicit column lists, transactional database functions, PostgREST with no API layer, migration and baseline handling, naming, cleanup, the testing approach, and the GroomBox domain rules (tenancy, money, booking states, scheduled jobs, scope). Keep them consistent with this document; if they disagree, raise it rather than picking one silently.
 
 ## 16. Deferred, with the intended approach
 
