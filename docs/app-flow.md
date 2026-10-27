@@ -7,14 +7,14 @@ Related: [product requirements](prd.md), [technical requirements](trd.md), [desi
 
 | Who | Arrives from | Lands on |
 |---|---|---|
-| Guest or client | A branch link shared in Messenger or Instagram, or a QR code in the shop | Branch booking page |
-| Guest or client | An organization link | Organization page listing branches |
+| Visitor or client | A branch link shared in Messenger or Instagram, or a QR code in the shop | Branch booking page |
+| Visitor or client | An organization link | Organization page listing branches |
 | Client | Opening GroomBox directly | Client home (sign-in if needed) |
 | Member | Opening GroomBox directly | Floor view of their branch |
-| Owner | First visit | `/sign-up`, then `/onboarding` |
+| Shop owner | First visit | `/sign-up`, then `/apply`; `/onboarding` once approved |
 | Platform admin | Opening GroomBox directly | Admin statements list |
 
-After sign-in, a user with both a client profile and a membership lands on the shop side and can switch to the client area from the account menu. A user who signs up through `/sign-up` goes to `/onboarding`. A signed-in user with no membership lands on the client home and can reach `/onboarding` from the account menu.
+After sign-in, a user with both a client profile and a membership lands on the shop side and can switch to the client area from the account menu. A signed-in user with no membership lands on the client home. The account menu has "List your shop", which opens `/apply`: the application form, or its status, and the link to `/onboarding` once approved.
 
 ## 2. Route map
 
@@ -25,9 +25,9 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/b/:branchSlug` | Branch page: services, staff, hours, book button |
 | `/b/:branchSlug/book` | Booking flow (steps below) |
 | `/o/:orgSlug` | Organization page: branches |
-| `/booking/:bookingCode` | Booking status, payment details, report payment |
 | `/sign-in`, `/sign-up` | Sign-in for clients and members; owner sign-up |
-| `/onboarding` | Create the organization and its first branch (signed-in, non-guest users) |
+| `/apply` | Apply to list a shop; application status (signed-in users) |
+| `/onboarding` | Create the organization and its first branch (approved applicants) |
 | `/invite/:code` | Accept a member invite |
 
 ### Client area (signed-in client)
@@ -36,7 +36,7 @@ After sign-in, a user with both a client profile and a membership lands on the s
 |---|---|
 | `/home` | Upcoming bookings, quick rebook |
 | `/bookings` | Upcoming and past bookings |
-| `/bookings/:bookingCode` | Booking detail |
+| `/bookings/:bookingCode` | Booking detail: status, payment details, report payment |
 | `/explore` | Shop directory with search and filters |
 | `/explore/:branchSlug` | Shop page inside the directory |
 | `/profile` | Own profile |
@@ -64,6 +64,8 @@ After sign-in, a user with both a client profile and a membership lands on the s
 
 | Route | Screen |
 |---|---|
+| `/admin/applications` | Shop applications, pending first |
+| `/admin/applications/:id` | Application detail, registration photo, approve or reject |
 | `/admin/statements` | Statements across organizations |
 | `/admin/statements/:id` | Statement detail, mark paid, add adjustment |
 | `/admin/organizations` | Organizations, restrict or restore |
@@ -84,8 +86,8 @@ After sign-in, a user with both a client profile and a membership lands on the s
 2. **Services.** Pick one or more. A running total and total duration show at the bottom.
 3. **Staff.** Pick a staff member who performs all chosen services, or "Any available".
 4. **Date and time.** Pick a date; open start times load for that date. Unavailable days are disabled.
-5. **Details.** A signed-in client confirms name and mobile number. A visitor chooses "Continue as guest" (name and mobile number) or signs in.
-6. **Review.** Shows services, staff, time, service total, deposit, convenience fee, amount due now, balance due at the shop, and the cancellation policy. The client ticks to accept the policy and taps "Hold my slot".
+5. **Sign in and details.** A visitor signs in with Google or Facebook; inside Messenger or Instagram the app first asks them to open the page in their phone's browser. The chosen services, staff, and time are kept. The client confirms name and mobile number.
+6. **Review.** Shows services, staff, time, service total, deposit, convenience fee, amount due now, balance due at the shop, and the cancellation policy. The client ticks to accept the policy and taps "Hold my slot". When the services take no deposit, nothing is due now, the fee shows as payable at the shop, and the button is "Book": the booking is confirmed at once and steps 7 to 10 are skipped.
 7. **Pay.** The slot is held. The screen shows a countdown, the amount due, and the branch's payment details and QR. The client pays in their own e-wallet app.
 8. **Report payment.** The client enters the reference number, amount, and method, optionally attaches a screenshot, and submits.
 9. **Waiting for review.** The booking page shows "Payment under review" and updates live.
@@ -93,14 +95,12 @@ After sign-in, a user with both a client profile and a membership lands on the s
 
 If the selected time is taken while the client is on step 5 or 6, the hold fails with a clear message and returns them to step 4 with fresh times.
 
-A guest is prompted to save the booking link and offered "Create an account to track your bookings" after step 8.
-
 ## 5. Booking states
 
 ```mermaid
 stateDiagram-v2
     [*] --> held: client holds slot
-    [*] --> confirmed: staff-entered appointment
+    [*] --> confirmed: staff-entered appointment, or online booking without a deposit
     [*] --> waiting: walk-in added
 
     held --> payment_submitted: client reports payment
@@ -168,7 +168,7 @@ The convenience fee entry is created on the move to `confirmed` from a deposit r
 1. Tap a confirmed appointment and "Check in" when the client arrives.
 2. Tap "Start" when service begins.
 3. Tap "Checkout": the items are pre-filled from the booking. Adjust a price, add an item, apply a discount, enter a tip.
-4. The screen shows the total, the deposit already paid, and the balance.
+4. The screen shows the total, the deposit already paid, the convenience fee for an online booking that had no deposit, and the balance.
 5. Record how the balance was paid, by one or more methods.
 6. Tap "Complete". The visit closes, the sale and commission are stored, and the floor updates.
 
@@ -176,22 +176,22 @@ The convenience fee entry is created on the move to `confirmed` from a deposit r
 
 1. Open "Close" for the branch. The business date defaults to today.
 2. The screen lists unfinished visits; each must be completed, cancelled, or marked no-show first.
-3. Review totals: sales by payment method, deposits received today, discounts, tips, and commission and tips per staff member.
+3. Review totals: sales by payment method, deposits received today, convenience fees collected at the shop, discounts, tips, and commission and tips per staff member.
 4. Enter the counted cash. The difference from expected cash is shown.
 5. Tap "Close day". The day locks. The owner can reopen it.
 
 ## 10. Flow: owner onboarding
 
-1. Sign up, then name the organization and choose its category.
+1. After the application is approved, open `/onboarding`. The organization name and category come from the application and can be adjusted.
 2. Add the first branch: name, address, area, hours.
-3. Add deposit payment details and a QR image.
+3. Add deposit payment details and a QR image, if any service will take a deposit.
 4. Add services, or start from a template for the chosen category.
 5. Add staff and their shifts.
 6. Set the deposit rule and cancellation policy; defaults are prefilled.
 7. Accept the terms, which include the fee rules and directory listing.
 8. Publish. The screen shows the booking link and a printable QR code.
 
-A checklist on the floor view shows any step skipped. A branch cannot be published without hours, at least one service, one bookable staff member with a shift, and payment details.
+A checklist on the floor view shows any step skipped. A branch cannot be published without hours, at least one service, one bookable staff member with a shift, and, when any offered service takes a deposit, payment details.
 
 ## 11. Flow: inviting a member
 
@@ -202,7 +202,7 @@ A checklist on the floor view shows any step skipped. A branch cannot be publish
 
 ## 12. Flow: fee billing
 
-1. Each accepted deposit adds a fee entry to the organization's unbilled balance, visible under "Billing".
+1. Each accepted deposit, and each checkout of an online booking without a deposit, adds a fee entry to the organization's unbilled balance, visible under "Billing".
 2. On a cut-off date, a statement is issued and the owner is notified in the app.
 3. The owner opens the statement: entries, branch breakdown, total, due date, and how to pay GroomBox.
 4. The owner pays outside the app and may enter a payment reference for the admin to see.
@@ -215,14 +215,15 @@ A checklist on the floor view shows any step skipped. A branch cannot be publish
 3. Booking links keep working. New deposits wait for review.
 4. The admin marks the statements paid; access returns on the next page load.
 
-## 14. Flow: guest to account
+## 14. Flow: applying to list a shop
 
-1. A guest with a booking taps "Create an account".
-2. If they are inside the Messenger or Instagram browser, the app first asks them to open the page in their phone's browser.
-3. They sign in with Google or Facebook; the identity is attached to the guest session.
-4. Their existing bookings appear under "Bookings".
+1. A signed-in user opens "List your shop" from the account menu.
+2. They enter the shop name, category, city and area, contact number, and an optional note, and upload a photo of their business registration (DTI, SEC, or BIR).
+3. They submit. The application shows as "Under review", and platform admins are notified in the app.
+4. A platform admin opens the application, checks the registration photo, and approves or rejects it with a reason.
+5. The applicant is notified in the app. Approved: "Set up your shop" opens `/onboarding` (flow 10). Rejected: the reason is shown, with "Apply again".
 
-A guest who clears their browser or changes device before upgrading can still reach a booking through its link, which carries the booking code.
+One approved application creates one organization. A second business needs a new application.
 
 ## 15. Empty, loading, and error states
 

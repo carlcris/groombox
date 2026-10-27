@@ -10,10 +10,10 @@ Browser (React single-page app, static files)
    │  supabase-js
    ▼
 Supabase
-   ├─ Auth        email/password, Google, Facebook, anonymous sessions
+   ├─ Auth        email/password, Google, Facebook
    ├─ PostgREST   tables, views, and database functions (the only data path)
    ├─ Realtime    floor queue, deposit reviews, notifications
-   ├─ Storage     branch photos, payment QR images, payment proofs
+   ├─ Storage     branch photos, payment QR images, payment proofs, business documents
    └─ Postgres    row-level security, functions, constraints, pg_cron jobs
 ```
 
@@ -83,11 +83,11 @@ Each feature folder holds its queries, mutations, schemas, and components. A fea
 |---|---|
 | Owners, managers, staff | Email and password, or Google |
 | Clients | Google or Facebook |
-| Guests | Supabase anonymous session, created when they start a booking, protected by a bot check (Cloudflare Turnstile through Supabase Auth settings) |
 | Platform admins | Same sign-in as members; admin status comes from a `platform_admins` row added by hand |
 
-- A guest upgrades by linking a Google or Facebook identity to the anonymous user, so the user id and its bookings are kept.
-- Google blocks sign-in inside in-app browsers such as Messenger and Instagram. The app detects these and shows "open in your browser" before offering Google. Guest booking is unaffected.
+- Anonymous sign-ins are disabled. Every online booking needs a signed-in client; staff-entered appointments and walk-ins create an organization client record with no account.
+- Google blocks sign-in inside in-app browsers such as Messenger and Instagram. Booking needs sign-in, so the app detects these browsers and shows "open in your browser" before the client signs in.
+- Any signed-in user can apply to list a shop. `create_organization` works only for a caller with an approved application that has not yet been used.
 - One person can be a client and a member with the same account.
 
 ## 6. Authorization
@@ -101,12 +101,12 @@ Each feature folder holds its queries, mutations, schemas, and components. A fea
 | Owner | Whole organization | Whole organization |
 | Manager | Assigned branches, plus the organization catalogue, staff profiles, and client list | Assigned branches: branch service offerings and price overrides, staff branch assignments, shifts, and time off. Not the organization catalogue, staff profiles, or commission rates |
 | Staff | Own schedule, floor data for assigned branches | Visit status for assigned branches; deposit review only if permitted |
-| Client or guest | Own profile, own bookings and proofs, public branch data | Through booking functions only |
-| Platform admin | Statements, fee entries, organizations, platform settings | Statements, settings, organization access |
+| Client | Own profile, own bookings and proofs, own shop applications, public branch data | Through booking and application functions only |
+| Platform admin | Shop applications, statements, fee entries, organizations, platform settings | Application review, statements, settings, organization access |
 
 - **Restriction**: the membership lookup used by policies requires the organization's access status to be `active`. Statement tables use a separate policy that ignores access status for the owner. Members can always read their own memberships, including the organization's name and access status, through the `my_memberships` view; the route guard uses it to show the restriction notice. Client-facing booking functions do not check access status.
-- **Public data**: guests and clients read branch, service, and staff display data through dedicated views that expose only public columns.
-- **Directory**: a view available only to signed-in, non-anonymous users, limited to listed organizations.
+- **Public data**: visitors and clients read branch, service, and staff display data through dedicated views that expose only public columns.
+- **Directory**: a view available only to signed-in users, limited to listed organizations.
 - `SECURITY DEFINER` is used only where a function must cross a caller's row-level limits, such as a client creating a booking inside an organization. Each such function performs its own access checks.
 
 ## 7. Booking engine
@@ -158,6 +158,7 @@ Realtime events trigger a TanStack Query refetch; they are not applied to the ca
 | `payment-qr` | Public read; owner and managers write | Deposit QR images |
 | `payment-proofs` | Private; uploader and permitted members read through short-lived signed URLs | Payment screenshots |
 | `avatars` | Public read; owner of the file writes | Profile photos |
+| `business-documents` | Private; the applicant writes and reads, platform admins read, through short-lived signed URLs | Business registration photos on shop applications |
 
 Uploads are limited to 5 MB and to image types, checked by bucket settings and policies.
 
@@ -187,7 +188,7 @@ In-app only. Database functions insert notification rows as part of the operatio
 
 - End-to-end tests with Playwright are the main mechanism, written per feature before it is called done, running against local Supabase with seed data.
 - Each run starts from a freshly reset local database and saves the Playwright HTML report and traces to `e2e/artifacts/`, which git ignores, so a run can be inspected and repeated.
-- pgTAP tests cover row-level rules: each role, each tenant boundary, restricted organizations, and anonymous users.
+- pgTAP tests cover row-level rules: each role, each tenant boundary, restricted organizations, applicants, and visitors who are not signed in.
 - Transactional functions are tested for the success path and for a forced failure after an earlier write, proving nothing is left behind.
 - `npm run db:baseline:check` runs after every schema change.
 

@@ -25,7 +25,7 @@ This is the design the first migrations are written from. Exact SQL lives in `su
 | `member_role` | `owner`, `manager`, `staff` |
 | `org_access_status` | `active`, `restricted` |
 | `org_category` | `salon`, `barbershop`, `spa`, `nails`, `lashes_brows`, `other` |
-| `deposit_type` | `fixed`, `percent` |
+| `deposit_type` | `none`, `fixed`, `percent` |
 | `booking_source` | `online`, `staff`, `walk_in` |
 | `booking_status` | `held`, `payment_submitted`, `needs_resubmission`, `review_expired_pending_resolution`, `confirmed`, `waiting`, `checked_in`, `in_service`, `completed`, `cancelled`, `no_show`, `hold_expired`, `payment_rejected` |
 | `proof_status` | `submitted`, `accepted`, `rejected`, `resubmission_requested` |
@@ -33,6 +33,7 @@ This is the design the first migrations are written from. Exact SQL lives in `su
 | `fee_entry_kind` | `booking_fee`, `adjustment` |
 | `statement_status` | `issued`, `paid`, `overdue`, `void` |
 | `cutoff_schedule` | `weekly`, `semi_monthly`, `monthly` |
+| `application_status` | `pending`, `approved`, `rejected` |
 
 ## 3. Platform tables
 
@@ -68,8 +69,29 @@ One row per auth user, created by a trigger on `auth.users`. This is the platfor
 | `full_name` | `text` | |
 | `mobile_number` | `text` | Unverified |
 | `avatar_path` | `text` | |
-| `is_guest` | `boolean` | True for anonymous sessions; cleared on upgrade |
 | `created_at`, `updated_at` | | |
+
+### `shop_applications`
+
+A user's request to list a shop. Not a tenant table: it exists before the organization does.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | |
+| `applicant_user_id` | `uuid` | References `profiles`. At most one `pending` application per user (partial unique index) |
+| `shop_name` | `text` | |
+| `category` | `org_category` | |
+| `city`, `area` | `text` | |
+| `contact_number` | `text` | |
+| `note` | `text` | Optional |
+| `registration_document_path` | `text` | Business registration photo in the private `business-documents` bucket |
+| `status` | `application_status` | Default `pending` |
+| `review_note` | `text` | Reason shown to the applicant |
+| `reviewed_by`, `reviewed_at` | | |
+| `organization_id` | `uuid` unique | Set by `create_organization`; an approved application creates one organization |
+| `created_at`, `updated_at` | | |
+
+Index on `(status, created_at)` for the admin review list.
 
 ## 4. Organization tables
 
@@ -86,7 +108,7 @@ One row per auth user, created by a trigger on `auth.users`. This is the platfor
 | `access_status` | `org_access_status` | Default `active` |
 | `restricted_at` | `timestamptz` | |
 | `deposit_type` | `deposit_type` | Default `fixed` |
-| `deposit_value` | `numeric(20,2)` | Greater than zero |
+| `deposit_value` | `numeric(20,2)` | Null when `deposit_type` is `none`; otherwise greater than zero |
 | `hold_minutes` | `smallint` | Default 15 |
 | `review_hours` | `smallint` | Default 12 |
 | `cancellation_policy` | `text` | |
@@ -177,7 +199,7 @@ Index on `(user_id, organization_id)` where `is_active`, to support policy looku
 | `buffer_minutes` | `smallint` | Default 0; clean-up time after the service |
 | `price` | `numeric(20,2)` | |
 | `price_is_starting` | `boolean` | "Starting at"; final price set at checkout |
-| `deposit_type`, `deposit_value` | | Optional override of the organization rule |
+| `deposit_type`, `deposit_value` | | Optional override of the organization rule; null uses the organization rule, `none` takes no deposit |
 | `is_active` | `boolean` | |
 | `sort_order` | `smallint` | |
 
@@ -238,15 +260,15 @@ Index on `(user_id, organization_id)` where `is_active`, to support policy looku
 | `booking_code` | `text` unique | Database-generated |
 | `organization_id`, `branch_id` | `uuid` | |
 | `client_id` | `uuid` | Organization client record |
-| `booked_by` | `uuid` | Auth user who created it (client, guest, or member) |
+| `booked_by` | `uuid` | Auth user who created it (client or member) |
 | `staff_id` | `uuid` | Nullable only while `waiting` with no preference |
 | `source` | `booking_source` | |
 | `status` | `booking_status` | |
 | `start_at`, `end_at` | `timestamptz` | Nullable only while `waiting` |
 | `service_total` | `numeric(20,2)` | Sum of booked service prices |
-| `deposit_amount` | `numeric(20,2)` | Zero for staff and walk-in sources |
-| `convenience_fee` | `numeric(20,2)` | Zero for staff and walk-in sources |
-| `amount_due` | `numeric(20,2)` | Deposit plus fee |
+| `deposit_amount` | `numeric(20,2)` | Zero for staff and walk-in sources, and for online bookings whose services take no deposit |
+| `convenience_fee` | `numeric(20,2)` | Zero for staff and walk-in sources. Paid with the deposit, or at checkout when the deposit is zero |
+| `amount_due` | `numeric(20,2)` | Paid up front: deposit plus fee, or zero when there is no deposit |
 | `payment_instructions_snapshot` | `jsonb` | Copied from the branch at creation |
 | `policy_acceptance_metadata` | `jsonb` | Policy text and acceptance time |
 | `hold_expires_at` | `timestamptz` | |
@@ -274,7 +296,7 @@ Constraints and indexes:
   ```
 
   Requires the `btree_gist` extension. Expired holds are moved to `hold_expired` by the create-booking function before it inserts, so they do not trip the constraint.
-- Check: `end_at > start_at`; `amount_due = deposit_amount + convenience_fee`.
+- Check: `end_at > start_at`; `amount_due = case when deposit_amount > 0 then deposit_amount + convenience_fee else 0 end`.
 - Indexes: `(branch_id, start_at)`, `(staff_id, start_at)`, `(booked_by, start_at desc)`, `(organization_id, client_id)`, and partial indexes on `hold_expires_at` and `review_expires_at` for the statuses the jobs scan.
 
 ### `booking_services`
@@ -320,7 +342,8 @@ A booking can have several proofs over time; at most one is `submitted` at once 
 | `business_date` | `date` | In the branch's time zone |
 | `subtotal`, `discount_amount`, `tip_amount` | `numeric(20,2)` | |
 | `deposit_applied` | `numeric(20,2)` | |
-| `balance_collected` | `numeric(20,2)` | Subtotal minus discount plus tip minus deposit |
+| `convenience_fee` | `numeric(20,2)` | Collected at checkout for an online booking without a deposit; zero otherwise |
+| `balance_collected` | `numeric(20,2)` | Subtotal minus discount plus tip minus deposit plus convenience fee |
 | `completed_by`, `completed_at` | | |
 
 Index on `(branch_id, business_date)`.
@@ -340,7 +363,7 @@ Index on `(branch_id, business_date)`.
 | `id` | `uuid` PK | |
 | `organization_id`, `branch_id` | `uuid` | Unique on `(branch_id, business_date)` |
 | `business_date` | `date` | |
-| `gross_sales`, `discounts`, `tips`, `deposits_received`, `deposits_applied` | `numeric(20,2)` | |
+| `gross_sales`, `discounts`, `tips`, `deposits_received`, `deposits_applied`, `convenience_fees_collected` | `numeric(20,2)` | |
 | `totals_by_method` | `jsonb` | |
 | `cash_expected`, `cash_counted`, `cash_variance` | `numeric(20,2)` | |
 | `closed_by`, `closed_at` | | |
@@ -396,10 +419,10 @@ Index on `(status, due_at)` for the restriction job.
 
 | View | Audience | Exposes |
 |---|---|---|
-| `public_branches` | Anyone, including guests | Published, active branches: name, slug, address, hours, media, organization name and logo |
+| `public_branches` | Anyone, including visitors who are not signed in | Published, active branches: name, slug, address, hours, media, organization name and logo |
 | `public_branch_services` | Anyone | Offered services with effective price and duration |
 | `public_branch_staff` | Anyone | Bookable staff: display name, title, photo, services |
-| `directory_branches` | Signed-in, non-guest users | `public_branches` limited to listed organizations, with category, city, and area |
+| `directory_branches` | Signed-in users | `public_branches` limited to listed organizations, with category, city, and area |
 | `my_bookings` | The signed-in user | Own bookings with branch and service summary |
 | `my_memberships` | The signed-in user | Own active memberships with role, branch assignments, and the organization's name, slug, and access status, including restricted organizations; used by the route guard and organization switcher |
 | `platform_payment_instructions` | Owners, including owners of restricted organizations | GroomBox's payment instructions from `platform_settings` |
@@ -411,10 +434,12 @@ Views run with the caller's rights (`security_invoker`) unless they must expose 
 
 | Function | Caller | What it does |
 |---|---|---|
-| `create_organization` | Signed-in user | Creates the organization, the owner membership, and the first branch |
+| `submit_shop_application` | Signed-in user | Inserts a `pending` application and notifies platform admins |
+| `review_shop_application` | Platform admin | Approves or rejects with a note and notifies the applicant |
+| `create_organization` | Approved applicant | Locks the caller's approved, unused application; creates the organization, the owner membership, and the first branch; links the application to the organization |
 | `create_invite`, `accept_invite` | Owner; invitee | Creates a single-use invite; adds the membership and branch assignments |
 | `get_available_slots` | Anyone | Open start times for a branch, date, services, and optional staff member |
-| `create_online_booking` | Client or guest | Expires stale holds for the staff member, resolves "any available", calculates totals, deposit, and fee, snapshots payment details and policy, upserts the client record, inserts as `held` |
+| `create_online_booking` | Signed-in client | Expires stale holds for the staff member, resolves "any available", calculates totals, deposit, and fee, snapshots payment details and policy, upserts the client record, inserts as `held`, or as `confirmed` when the deposit is zero |
 | `submit_payment_proof` | Booking's creator | Adds a proof, moves to `payment_submitted`, sets `review_expires_at`, notifies reviewers |
 | `review_payment_proof` | Permitted member | Accept, reject, or request resubmission. Accepting confirms the booking and inserts the fee entry |
 | `cancel_booking` | Booking's creator or a member | Cancels from an allowed status; records metadata |
@@ -422,14 +447,13 @@ Views run with the caller's rights (`security_invoker`) unless they must expose 
 | `reschedule_booking` | Member | Moves to a new time or staff member, subject to the overlap constraint |
 | `add_walk_in` | Member | Inserts as `waiting` with the next queue number |
 | `check_in_booking`, `start_service`, `mark_no_show` | Member | Status moves; `start_service` sets the time range for walk-ins |
-| `complete_checkout` | Member | Creates the sale, items, and payments, calculates commission, completes the booking |
+| `complete_checkout` | Member | Creates the sale, items, and payments, calculates commission, completes the booking; for an online booking without a deposit, adds the convenience fee and inserts the fee entry |
 | `get_daily_close_summary` | Owner, manager | Totals for a branch and date |
 | `close_day`, `reopen_day` | Owner, manager; owner | Writes or unlocks the close |
 | `submit_statement_payment_reference` | Owner | Records the owner's reference |
 | `mark_statement_paid` | Platform admin | Marks paid; restores access if nothing else is overdue |
 | `add_fee_adjustment` | Platform admin | Inserts an adjustment entry |
 | `set_organization_access` | Platform admin | Restricts or restores by hand |
-| `upgrade_guest_profile` | Guest after linking an identity | Clears `is_guest`, fills the profile |
 
 Functions run by `pg_cron`, not exposed through PostgREST: `expire_holds`, `expire_reviews`, `issue_fee_statements`, `restrict_overdue_organizations`.
 
@@ -440,6 +464,7 @@ Every state-changing function locks its main row `FOR UPDATE`, checks the curren
 | Table group | Select | Insert, update, delete |
 |---|---|---|
 | `profiles` | Own row; members see profiles of their organization's members | Own row |
+| `shop_applications` | The applicant; platform admin | Functions only |
 | `organizations`, `branches`, hours, closures, media | Active members of an accessible organization | Owner; managers for their branches |
 | Members, invites | Owner; a member sees their own row, even when restricted, through `my_memberships` | Owner, through functions |
 | `service_categories`, `services`, `staff`, `staff_services` | Members | Owner |
@@ -475,6 +500,7 @@ Branch-scoped policies add a second lookup through `member_branches`. Policy cha
 | `payment-qr` | Yes | `{organization_id}/{branch_id}/{file}` | Owner, managers of the branch |
 | `payment-proofs` | No | `{organization_id}/{booking_id}/{file}` | The booking's creator |
 | `avatars` | Yes | `{user_id}/{file}` | The user |
+| `business-documents` | No | `{user_id}/{file}` | The applicant; platform admins read through signed URLs |
 
 All buckets: 5 MB limit, image types only.
 
@@ -482,10 +508,11 @@ All buckets: 5 MB limit, image types only.
 
 `supabase/seed.sql` and a local seed script create, for development and tests:
 
-- A platform admin, two owners, managers, staff with and without logins, clients, and a guest session.
+- A platform admin, two owners, managers, staff with and without logins, and clients with accounts.
+- Shop applications: one pending, one rejected, and the approved ones behind the seeded organizations.
 - Two organizations: one with two branches, one with one branch and `restricted` access.
 - Categories, services, branch offerings, staff, shifts.
-- Bookings in every status, proofs in every status, completed sales, one closed day.
+- Bookings in every status, online bookings with and without a deposit, walk-in and staff-entered clients without accounts, proofs in every status, completed sales, one closed day.
 - Fee entries, one paid statement, one issued, one overdue.
 
 Seed data never goes in migrations.

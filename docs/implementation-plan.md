@@ -20,9 +20,8 @@ Estimates are rough, for one person building with Claude. They are not commitmen
 | Confirm or change assumptions A1–A10 in the PRD | Product owner |
 | Install Docker locally (the Supabase CLI comes with `npm install`) | Product owner |
 | Create Google and Facebook developer apps for sign-in; start Facebook app review | Product owner |
-| Create a Cloudflare Turnstile site for the guest bot check | Product owner |
 
-The last two are needed by phase 3, not phase 1.
+The last one is needed by phase 3, not phase 1.
 
 ## 3. Phases
 
@@ -45,15 +44,17 @@ Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference come
 **Build**
 - Vite, React, TypeScript, TanStack Router and Query, Tailwind, shadcn/ui, with the design tokens from the design brief.
 - Supabase local project; migration tooling, baseline file and check script, type generation.
-- Tables: `profiles`, `platform_admins`, `platform_settings`, `organizations`, `branches`, `organization_members`, `member_branches`, `organization_invites`, `notifications`.
+- Tables: `profiles`, `platform_admins`, `platform_settings`, `shop_applications`, `organizations`, `branches`, `organization_members`, `member_branches`, `organization_invites`, `notifications`.
 - Row-level rules and the membership lookup, including the restricted-organization rule and the `my_memberships` view.
 - Sign-up and sign-in for owners and members; route guards per audience.
-- `create_organization`, invites, team screen, branch switcher.
+- Shop application with the registration photo upload (`business-documents` bucket), the admin applications list and review, and in-app notifications for both sides.
+- `create_organization` for approved applicants, invites, team screen, branch switcher.
 - App shell for the shop side: navigation, notification list, offline banner, version check.
 - Playwright and pgTAP harness with seed data.
 
 **Exit criteria**
-- An owner signs up, creates an organization and branch, and invites a manager who joins.
+- A user signs up and applies; a platform admin approves; the user creates an organization and branch, and invites a manager who joins.
+- A user without an approved, unused application cannot create an organization, and nobody but the applicant and platform admins can read an application or its photo.
 - pgTAP proves a member of one organization cannot read or write another's rows, and that role and branch scope hold.
 - The baseline check passes.
 
@@ -65,7 +66,7 @@ Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference come
 - Branch hours, closures, photos, payment details and QR upload.
 - Deposit rule, hold and review times, cancellation policy, directory listing switch.
 - Onboarding checklist and the publish rule.
-- Storage buckets and policies.
+- Remaining storage buckets and policies.
 
 **Exit criteria**
 - An owner takes a new organization from empty to a published branch using only the app.
@@ -77,12 +78,12 @@ Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference come
 - `bookings`, `booking_services`, `clients`; the exclusion constraint.
 - `get_available_slots` and `create_online_booking`, with "any available".
 - Public views; branch and organization pages; the booking flow through to the held state.
-- Guest sessions with the bot check; client sign-in with Google and Facebook; in-app browser detection.
-- Booking status page reachable by booking code.
+- Client sign-in with Google and Facebook, keeping the booking choices through sign-in; in-app browser detection.
+- Booking detail page in the client area.
 - `expire_holds` job.
 
 **Exit criteria**
-- A guest and a signed-in client can each hold a slot from a branch link on a phone.
+- A client signs in from a branch link on a phone and books: a held slot when the services take a deposit, a confirmed booking when they do not.
 - A concurrency test fires simultaneous bookings at one slot; exactly one succeeds.
 - Availability is correct across shifts, time off, closures, buffers, and existing bookings, including a booking that crosses midnight in the branch's time zone.
 - The availability query meets the performance target in the TRD, measured as an authenticated role.
@@ -122,7 +123,7 @@ This is the highest-risk phase. If it overruns, cut "any available" first.
 ### Phase 6: checkout and daily close
 
 **Build**
-- `sales`, `sale_items`, `sale_payments`; `complete_checkout` with commission and deposit deduction.
+- `sales`, `sale_items`, `sale_payments`; `complete_checkout` with commission, deposit deduction, and the convenience fee and fee entry for online bookings without a deposit.
 - Visit detail and checkout screen with split payments.
 - `daily_closes`, `daily_close_staff`; summary, cash count, close and reopen.
 
@@ -130,18 +131,17 @@ This is the highest-risk phase. If it overruns, cut "any available" first.
 - A day of mixed visits closes with totals that match a hand calculation in the test.
 - A closed day rejects new or changed sales until reopened.
 - Commission honours staff default and per-service overrides, after discount.
+- Checking out an online booking without a deposit adds the fee to the bill and creates exactly one fee entry; cancelling one or marking it a no-show creates none.
 
 ### Phase 7: client area
 
 **Build**
 - Home, bookings list and detail, cancel, rebook, profile.
-- Guest-to-account upgrade.
 - Directory: list, search, area and category filters, shop page. Built last in this phase.
 
 **Exit criteria**
-- A guest upgrades and sees their earlier bookings.
 - A client sees bookings from two different organizations and nothing belonging to anyone else.
-- The directory lists only published branches of listed organizations, to signed-in non-guest users only.
+- The directory lists only published branches of listed organizations, to signed-in users only.
 
 If the schedule is tight, ship this phase without the directory and add it after the pilot starts.
 
@@ -181,7 +181,7 @@ If the schedule is tight, ship this phase without the directory and add it after
 | Item | Rule |
 |---|---|
 | Tests | End-to-end tests for each flow; failure cases listed before isolated tests are written |
-| Row-level rules | pgTAP for every new table, including the restricted and guest cases |
+| Row-level rules | pgTAP for every new table, including the restricted and not-signed-in cases |
 | Lists | Server-side filtering, sorting, and pagination |
 | States | Loading, empty, error, and offline for every screen |
 | Cleanup | Remove anything a change makes obsolete, in the same change |
