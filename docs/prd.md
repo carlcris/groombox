@@ -31,6 +31,7 @@ GroomBox is a booking and shop-management web app for salons, barbershops, and s
 - Consolidated cross-branch reports beyond the daily close
 - Native mobile apps
 - Official tax receipts
+- Activity logs or an audit trail
 - Owner approval or identity verification before a shop goes live
 
 ## 5. Users and roles

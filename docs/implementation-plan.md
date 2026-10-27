@@ -45,7 +45,7 @@ Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference come
 **Build**
 - Vite, React, TypeScript, TanStack Router and Query, Tailwind, shadcn/ui, with the design tokens from the design brief.
 - Supabase local project; migration tooling, baseline file and check script, type generation.
-- Tables: `profiles`, `platform_admins`, `platform_settings`, `organizations`, `branches`, `organization_members`, `member_branches`, `organization_invites`, `activity_logs`, `notifications`.
+- Tables: `profiles`, `platform_admins`, `platform_settings`, `organizations`, `branches`, `organization_members`, `member_branches`, `organization_invites`, `notifications`.
 - Row-level rules and the membership lookup, including the restricted-organization rule.
 - Sign-up and sign-in for owners and members; route guards per audience.
 - `create_organization`, invites, team screen, branch switcher.

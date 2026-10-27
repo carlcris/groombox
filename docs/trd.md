@@ -176,7 +176,6 @@ In-app only. Database functions insert notification rows as part of the operatio
 | Offline | The app shell loads; data screens show an offline state. No offline writes |
 | Stale clients | The app checks a version file on focus and prompts a reload after a deploy |
 | Localisation | English at launch; all strings in one place so Filipino can be added. Currency is the Philippine peso |
-| Audit | State-changing functions write an activity log row: actor, action, entity, bounded metadata |
 
 ## 13. Environments
 
@@ -202,3 +201,4 @@ In-app only. Database functions insert notification rows as part of the operatio
 | Payment provider | Edge Function to create the payment and one to receive the webhook; the webhook calls the same accept-deposit function staff use today |
 | SMS, email, push | Edge Function triggered by notification rows |
 | Link previews and search visibility | Server rendering for the public booking and organization pages only |
+| Activity log | An insert-only `activity_logs` table written by each state-changing database function: actor, action, entity, and bounded, allow-listed metadata |

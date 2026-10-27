@@ -41,11 +41,6 @@ GroomBox is a booking and shop-management web app for salons, barbershops, and s
   in the same change. `COUNT(*)` is an aggregate and is not considered a projection wildcard.
 - Never show raw database, Supabase, or internal exception text to users. Database functions raise
   coded errors; the app maps each code to a safe message.
-- Every state-changing database function must write an `activity_logs` row: actor, action, entity, and
-  sanitized, bounded, allowlisted metadata. Reads are not logged.
-- Activity display messages must use the shared formatter and allowlisted presentation fields.
-  Reuse actor and entity labels or codes already loaded or returned by the operation; never add a
-  database read solely to enrich an activity message. Use a generic message when context is absent.
 - Do not send insert-only identity, ownership, control number, or creation-linkage fields through update paths.
 - Business operations that write more than one row/table, perform a workflow state transition, or create dependent side effects must be transactional. Implement the core operation as a DB-owned RPC/function in `supabase/migrations/`, not as chained client/API mutations.
 - There is no API layer. Call PostgREST directly through the Supabase client (table/view reads and
@@ -414,6 +409,7 @@ Create via **seed script or documented Supabase Auth admin process** (NOT migrat
 - Official tax receipts
 - Owner approval or identity verification
 - Invite-based platform admin creation
+- Activity logs or an audit trail
 - Map-first browse (list-first directory; PostGIS deferred)
 
 ## Key Gotchas

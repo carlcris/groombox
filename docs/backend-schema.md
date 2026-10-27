@@ -386,15 +386,11 @@ Partial index on `(organization_id)` where `statement_id is null`. Entries are i
 
 Index on `(status, due_at)` for the restriction job.
 
-## 10. Notifications and audit
+## 10. Notifications
 
 ### `notifications`
 
 `id`, `recipient_user_id`, `organization_id` nullable, `type`, `title`, `body`, `entity_type`, `entity_id`, `read_at`, `created_at`. Index on `(recipient_user_id, created_at desc)`.
-
-### `activity_logs`
-
-`id`, `organization_id` nullable, `actor_user_id`, `action`, `entity_type`, `entity_id`, `metadata jsonb` (bounded, allow-listed fields), `created_at`. Insert-only, written by functions.
 
 ## 11. Views
 
@@ -435,7 +431,7 @@ Views run with the caller's rights (`security_invoker`) unless they must expose 
 
 Functions run by `pg_cron`, not exposed through PostgREST: `expire_holds`, `expire_reviews`, `issue_fee_statements`, `restrict_overdue_organizations`.
 
-Every state-changing function locks its main row `FOR UPDATE`, checks the current status and the caller's scope, performs all writes, and writes an activity log row.
+Every state-changing function locks its main row `FOR UPDATE`, checks the current status and the caller's scope, and performs all writes.
 
 ## 13. Row-level security summary
 
@@ -451,7 +447,6 @@ Every state-changing function locks its main row `FOR UPDATE`, checks the curren
 | Sales, daily close | Owner, manager by branch; staff see their own sale items | Functions only |
 | `fee_entries`, `fee_statements` | Owner, regardless of access status; platform admin | Functions only |
 | `notifications` | Recipient | Recipient may set `read_at` |
-| `activity_logs` | Owner; platform admin | Functions only |
 | `platform_settings` | Platform admin; fee values exposed to others through booking functions | Platform admin |
 
 "Accessible organization" means `access_status = 'active'`. Membership is resolved with a set-based lookup:
