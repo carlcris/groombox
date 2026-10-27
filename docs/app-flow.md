@@ -1,6 +1,6 @@
 # GroomBox: app flow
 
-Last updated: 2026-10-09
+Last updated: 2026-10-27
 Related: [product requirements](prd.md), [technical requirements](trd.md), [design brief](design-brief.md), [backend schema](backend-schema.md)
 
 ## 1. Entry points
@@ -11,10 +11,10 @@ Related: [product requirements](prd.md), [technical requirements](trd.md), [desi
 | Guest or client | An organization link | Organization page listing branches |
 | Client | Opening GroomBox directly | Client home (sign-in if needed) |
 | Member | Opening GroomBox directly | Floor view of their branch |
-| Owner | First visit | Sign-up, then organization setup |
+| Owner | First visit | `/sign-up`, then `/onboarding` |
 | Platform admin | Opening GroomBox directly | Admin statements list |
 
-After sign-in, a user with both a client profile and a membership lands on the shop side and can switch to the client area from the account menu.
+After sign-in, a user with both a client profile and a membership lands on the shop side and can switch to the client area from the account menu. A user who signs up through `/sign-up` goes to `/onboarding`. A signed-in user with no membership lands on the client home and can reach `/onboarding` from the account menu.
 
 ## 2. Route map
 
@@ -27,6 +27,7 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/o/:orgSlug` | Organization page: branches |
 | `/booking/:bookingCode` | Booking status, payment details, report payment |
 | `/sign-in`, `/sign-up` | Sign-in for clients and members; owner sign-up |
+| `/onboarding` | Create the organization and its first branch (signed-in, non-guest users) |
 | `/invite/:code` | Accept a member invite |
 
 ### Client area (signed-in client)
@@ -51,8 +52,8 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/shop/:branchId/visit/:bookingId` | Visit detail and checkout | All |
 | `/shop/:branchId/close` | Daily close | Owner, manager |
 | `/shop/clients` | Client list and detail | Owner, manager |
-| `/shop/setup/services` | Service catalogue | Owner, manager |
-| `/shop/setup/staff` | Staff, shifts, commission | Owner, manager |
+| `/shop/setup/services` | Service catalogue; branch offerings and price overrides | Owner; managers for branch offerings and prices |
+| `/shop/setup/staff` | Staff, shifts, commission | Owner; managers for branch assignments, shifts, and time off |
 | `/shop/setup/branches` | Branches, hours, payment details | Owner |
 | `/shop/setup/policies` | Deposit rule, hold and review times, cancellation policy, directory listing | Owner |
 | `/shop/team` | Members and invites | Owner |

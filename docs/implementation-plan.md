@@ -1,6 +1,6 @@
 # GroomBox: implementation plan
 
-Last updated: 2026-10-09
+Last updated: 2026-10-27
 Related: [product requirements](prd.md), [technical requirements](trd.md), [app flow](app-flow.md), [design brief](design-brief.md), [backend schema](backend-schema.md)
 
 Estimates are rough, for one person building with Claude. They are not commitments.
@@ -18,7 +18,7 @@ Estimates are rough, for one person building with Claude. They are not commitmen
 | Task | Owner |
 |---|---|
 | Confirm or change assumptions A1–A10 in the PRD | Product owner |
-| Install Docker and the Supabase CLI locally | Product owner |
+| Install Docker locally (the Supabase CLI comes with `npm install`) | Product owner |
 | Create Google and Facebook developer apps for sign-in; start Facebook app review | Product owner |
 | Create a Cloudflare Turnstile site for the guest bot check | Product owner |
 
@@ -46,7 +46,7 @@ Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference come
 - Vite, React, TypeScript, TanStack Router and Query, Tailwind, shadcn/ui, with the design tokens from the design brief.
 - Supabase local project; migration tooling, baseline file and check script, type generation.
 - Tables: `profiles`, `platform_admins`, `platform_settings`, `organizations`, `branches`, `organization_members`, `member_branches`, `organization_invites`, `notifications`.
-- Row-level rules and the membership lookup, including the restricted-organization rule.
+- Row-level rules and the membership lookup, including the restricted-organization rule and the `my_memberships` view.
 - Sign-up and sign-in for owners and members; route guards per audience.
 - `create_organization`, invites, team screen, branch switcher.
 - App shell for the shop side: navigation, notification list, offline banner, version check.
@@ -184,7 +184,6 @@ If the schedule is tight, ship this phase without the directory and add it after
 | Row-level rules | pgTAP for every new table, including the restricted and guest cases |
 | Lists | Server-side filtering, sorting, and pagination |
 | States | Loading, empty, error, and offline for every screen |
-| Docs | Update `docs/kb` and `docs/guides` when behaviour, rules, or schema change |
 | Cleanup | Remove anything a change makes obsolete, in the same change |
 
 ## 5. Order of cuts if time runs short

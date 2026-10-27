@@ -1,6 +1,6 @@
 # GroomBox: technical requirements (TRD)
 
-Last updated: 2026-10-09
+Last updated: 2026-10-27
 Related: [product requirements](prd.md), [app flow](app-flow.md), [design brief](design-brief.md), [backend schema](backend-schema.md), [implementation plan](implementation-plan.md)
 
 ## 1. Architecture
@@ -99,12 +99,12 @@ Each feature folder holds its queries, mutations, schemas, and components. A fea
 | Role | Read | Write |
 |---|---|---|
 | Owner | Whole organization | Whole organization |
-| Manager | Assigned branches, plus the catalogue and client list | Assigned branches |
+| Manager | Assigned branches, plus the organization catalogue, staff profiles, and client list | Assigned branches: branch service offerings and price overrides, staff branch assignments, shifts, and time off. Not the organization catalogue, staff profiles, or commission rates |
 | Staff | Own schedule, floor data for assigned branches | Visit status for assigned branches; deposit review only if permitted |
 | Client or guest | Own profile, own bookings and proofs, public branch data | Through booking functions only |
 | Platform admin | Statements, fee entries, organizations, platform settings | Statements, settings, organization access |
 
-- **Restriction**: the membership lookup used by policies requires the organization's access status to be `active`. Statement tables use a separate policy that ignores access status for the owner. Client-facing booking functions do not check access status.
+- **Restriction**: the membership lookup used by policies requires the organization's access status to be `active`. Statement tables use a separate policy that ignores access status for the owner. Members can always read their own memberships, including the organization's name and access status, through the `my_memberships` view; the route guard uses it to show the restriction notice. Client-facing booking functions do not check access status.
 - **Public data**: guests and clients read branch, service, and staff display data through dedicated views that expose only public columns.
 - **Directory**: a view available only to signed-in, non-anonymous users, limited to listed organizations.
 - `SECURITY DEFINER` is used only where a function must cross a caller's row-level limits, such as a client creating a booking inside an organization. Each such function performs its own access checks.
@@ -179,13 +179,14 @@ In-app only. Database functions insert notification rows as part of the operatio
 
 ## 13. Environments
 
-- **Local**: Supabase CLI with Docker. All development and tests run here.
+- **Local**: Supabase CLI, pinned as an npm dev dependency and run with `npx supabase`, with Docker. All development and tests run here.
 - **Hosted**: one Supabase project and one static site for the pilot. The product owner applies migrations and deploys.
 - Environment variables in the app are limited to the Supabase URL and the public anon key.
 
 ## 14. Testing
 
 - End-to-end tests with Playwright are the main mechanism, written per feature before it is called done, running against local Supabase with seed data.
+- Each run starts from a freshly reset local database and saves the Playwright HTML report and traces to `e2e/artifacts/`, which git ignores, so a run can be inspected and repeated.
 - pgTAP tests cover row-level rules: each role, each tenant boundary, restricted organizations, and anonymous users.
 - Transactional functions are tested for the success path and for a forced failure after an earlier write, proving nothing is left behind.
 - `npm run db:baseline:check` runs after every schema change.
