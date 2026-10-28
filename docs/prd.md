@@ -210,18 +210,18 @@ Consequence, accepted: while restricted, nobody can review deposits. Reported pa
 7. Commission is a percentage of each item's price after discount. Tips go fully to the staff member who performed the service.
 8. All times are stored with time zone. Each branch has a time zone, defaulting to Philippine time.
 
-## 9. Assumptions to confirm
+## 9. Confirmed assumptions
 
-These were open after the plan review. Each is built as stated here unless changed.
+These were open after the plan review. The product owner confirmed all of them on 2026-10-28; A1, A3, A4, and A7 were revised first.
 
-| # | Assumption | Why this default |
+| # | Assumption | Why |
 |---|---|---|
 | A1 | The fee is charged only on online bookings: once the deposit is accepted, or at checkout when there is no deposit. Staff-entered appointments and walk-ins are free | A simple rule owners will trust. It accepts some leakage through chat bookings |
 | A2 | The fee percentage applies to the service total, not the deposit | Revenue does not shrink when a shop sets a small deposit |
 | A3 | Deposits are optional: the organization rule is none, fixed, or percent, with a per-service override | Shops that do not take deposits can still take online bookings; covers cheap haircuts and expensive colour in one shop |
 | A4 | Every online booking needs a client account; there is no guest booking. Staff-entered appointments and walk-ins do not need the client to have an account | Every online booking has a known client who can track it and report payment; shops still serve clients without the app |
 | A5 | Deposit review is allowed for owners and managers, and for staff the owner permits | Staff may not have access to the shop's GCash |
-| A6 | Owners and staff sign in with email and password or Google | Not specified yet |
+| A6 | Owners and staff sign in with email and password or Google | Email covers owners and staff without a Google account; Google is one tap for the rest |
 | A7 | A user applies to list their shop with a business registration photo; a platform admin approves it before the user can create the organization. The platform admin can still restrict a shop later | Keeps unvetted shops off the platform |
 | A8 | Statement minimum of ₱100; smaller balances carry over | Avoids chasing tiny amounts |
 | A9 | Refunds are settled outside the app | No payment provider in the first release |

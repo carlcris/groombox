@@ -17,7 +17,6 @@ Estimates are rough, for one person building with Claude. They are not commitmen
 
 | Task | Owner |
 |---|---|
-| Confirm or change assumptions A1–A10 in the PRD | Product owner |
 | Install Docker locally (the Supabase CLI comes with `npm install`) | Product owner |
 | Create Google and Facebook developer apps for sign-in; start Facebook app review | Product owner |
 
