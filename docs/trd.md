@@ -111,7 +111,10 @@ Each feature folder holds its queries, mutations, schemas, and components. A fea
 
 ## 7. Booking engine
 
-- **Availability** is a database function returning open start times for a branch, date, service list, and optional staff member. Inputs: branch hours and closures, staff shifts and time off, service durations and buffers, and existing bookings that block the slot.
+- **Availability** is a database function returning open start times for a branch, date, service list, and optional staff member, each with the service total for that start time. Inputs: branch hours and closures, staff shifts and time off, service durations and buffers, time-based price rules, and existing bookings that block the slot.
+- **Hours and shifts** are weekly windows in the branch's time zone. A day can have several windows, and a window may run past midnight. A booking must fit inside one opening period and one shift.
+- **Time-based prices**: a branch can price a service by days of the week and time window. The booking's start time picks the price for every service in it; with no matching rule, the branch price or the catalogue price applies.
+- **Business date**: the visit's start in the branch's time zone, minus the branch's business-day start (default midnight). A branch open past midnight sets it later so late visits close with the previous day.
 - **Intervals** are half-open, `[start_at, end_at)`, stored as `timestamptz`. Slot maths runs in the branch's time zone.
 - **No double booking**: an exclusion constraint on staff member and time range covers every status that blocks a slot. Because a constraint cannot depend on the current time, the create-booking function first marks that staff member's expired holds as `hold_expired`, then inserts. The constraint is the final guard against races.
 - **"Any available"** picks the qualifying staff member with the fewest booked minutes that day.

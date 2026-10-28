@@ -240,6 +240,8 @@ At completion, report:
 ### Database & Timestamps
 - **ALWAYS use `timestamptz`** for booking, shift, closure, and billing timestamps
 - **Each branch MUST have an IANA timezone** (default `Asia/Manila`), used for all slot and business-date calculations
+- Branch hours, staff shifts, and price rules are weekly windows in local `time`; a day can have several, and a window whose end is not after its start runs past midnight and belongs to the day it starts
+- A sale's business date is its start in the branch timezone minus the branch's `business_day_starts_at` (default midnight)
 - **Use half-open intervals `[start_at, end_at)`** for overlap checks
 - **Database timestamps are the source of truth** - never rely on client-side timers for expiry
 - Money is `numeric(20,2)`; percentages are `numeric(5,2)`
@@ -316,6 +318,7 @@ Cannot publish a branch without:
 ### Services, Pricing, and Commission
 - Services are defined once per organization; `branch_services` marks which a branch offers, with an optional price override
 - Only the owner edits the organization catalogue, staff profiles, and commission rates; managers edit branch offerings, price overrides, staff branch assignments, shifts, and time off for their branches
+- A branch can set time-based prices per service (`branch_service_price_rules`: days of the week, time window, price). Price resolution: matching rule for the booking's start time, then the branch `price_override`, then the catalogue price. Every service in a booking takes the price for the booking's start time; walk-ins take the price when service starts
 - A service may be "starting at" priced; the final price is set at checkout
 - Deposit rule is per organization (`none`, `fixed`, or `percent`), with an optional per-service override
 - Commission is the staff default percentage, overridden per staff and service, applied to each item's price **after discount**
@@ -361,11 +364,12 @@ Cannot publish a branch without:
 ## Slot Generation Rules
 
 Generate bookable start times from:
-- Branch operating hours and closures (in the branch timezone)
+- Branch opening periods and closures (in the branch timezone); a booking fits inside one opening period and one shift
 - Staff shifts at the branch and staff time off
 - Services the staff member performs
 - Total duration of the chosen services plus buffer time
 - Blocking bookings (respecting the state machine rules above)
+- Each start time is returned with its service total under the branch's time-based prices
 
 ## Demo/Seed Data
 
@@ -374,8 +378,8 @@ Create via **seed script or documented Supabase Auth admin process** (NOT migrat
 - Shop applications: pending, rejected, and approved
 - Two organizations: one with two branches, one with one branch and `restricted` access
 - Categories: salon, barbershop, spa
-- Service catalogue, branch offerings and overrides, staff, shifts, time off
-- Branches with address, city/area, timezone, hours, photos, payment instructions and QR
+- Service catalogue, branch offerings and overrides, time-based price rules, staff, shifts, time off
+- Branches with address, city/area, timezone, hours (including a split day and a branch open past midnight), photos, payment instructions and QR
 - Bookings in ALL lifecycle states, online bookings with and without a deposit, walk-in and staff-entered clients without accounts, payment proofs in every status
 - Completed sales and one closed business day
 - Fee entries, one paid statement, one issued, one overdue

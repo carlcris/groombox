@@ -61,9 +61,9 @@ Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference come
 ### Phase 2: shop setup
 
 **Build**
-- Categories, services, branch offerings and price overrides.
+- Categories, services, branch offerings, price overrides, and time-based price rules.
 - Staff, branch and service assignments, shifts, time off, commission rates.
-- Branch hours, closures, photos, payment details and QR upload.
+- Branch opening periods (several per day, past midnight) and business-day start, closures, photos, payment details and QR upload.
 - Deposit rule, hold and review times, cancellation policy, directory listing switch.
 - Onboarding checklist and the publish rule.
 - Remaining storage buckets and policies.
@@ -85,7 +85,8 @@ Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference come
 **Exit criteria**
 - A client signs in from a branch link on a phone and books: a held slot when the services take a deposit, a confirmed booking when they do not.
 - A concurrency test fires simultaneous bookings at one slot; exactly one succeeds.
-- Availability is correct across shifts, time off, closures, buffers, and existing bookings, including a booking that crosses midnight in the branch's time zone.
+- Availability is correct across split opening periods, shifts, time off, closures, buffers, and existing bookings, including a branch and a booking that cross midnight in the branch's time zone.
+- Each start time carries the right price under time-based rules, and the booking stores the price for its start time.
 - The availability query meets the performance target in the TRD, measured as an authenticated role.
 
 This is the highest-risk phase. If it overruns, cut "any available" first.
@@ -130,6 +131,7 @@ This is the highest-risk phase. If it overruns, cut "any available" first.
 **Exit criteria**
 - A day of mixed visits closes with totals that match a hand calculation in the test.
 - A closed day rejects new or changed sales until reopened.
+- At a branch open past midnight, a visit after midnight counts toward the previous business day's close.
 - Commission honours staff default and per-service overrides, after discount.
 - Checking out an online booking without a deposit adds the fee to the bill and creates exactly one fee entry; cancelling one or marking it a no-show creates none.
 

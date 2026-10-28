@@ -78,19 +78,21 @@ Priority: **M** = must have for the pilot, **S** = should have, **C** = could mo
 | SET-1 | Service catalogue per organization: category, name, duration, buffer time, price, "starting at" flag | M |
 | SET-2 | Each branch chooses which services it offers and can override the price | M |
 | SET-3 | Staff profiles: name, title, photo, branches, services they perform, weekly shifts, time off | M |
-| SET-4 | Branch profile: address, area, hours, closures, photos, contact number | M |
+| SET-4 | Branch profile: address, area, hours, closures, photos, contact number. Hours allow several opening periods per day and periods that run past midnight | M |
 | SET-5 | Deposit payment details per branch: account name, number, method, QR image; required only when the branch offers a service that takes a deposit | M |
 | SET-6 | Deposit rule per organization (no deposit, fixed amount, or percentage of the service total), with an optional per-service override | M |
 | SET-7 | Hold time and review time for deposits, and cancellation policy text | M |
 | SET-8 | Commission: default percentage per staff member, optional override per staff and service | M |
 | SET-9 | An organization can opt out of the directory | M |
+| SET-10 | A branch can set time-based prices for a service by days of the week and time window, for example ₱250 from 8am to 3pm and ₱300 from 3pm to midnight | M |
+| SET-11 | A branch open past midnight sets when its business day starts, so late visits count toward the previous day's close | M |
 
 ### 7.3 Booking
 
 | ID | Requirement | Priority |
 |---|---|---|
 | BKG-1 | Each branch has a public booking link; an organization page lists its branches | M |
-| BKG-2 | A client picks one or more services, a staff member or "any available", and a time from live availability | M |
+| BKG-2 | A client picks one or more services, a staff member or "any available", and a time from live availability; each time shows its price when prices vary by time | M |
 | BKG-3 | Two clients can never hold the same staff member at overlapping times | M |
 | BKG-4 | Online booking requires a signed-in client; the chosen services, staff, and time are kept through sign-in | M |
 | BKG-5 | Before confirming, the client sees the service total, deposit, convenience fee, amount due now, balance due at the shop, and the cancellation policy, and accepts the policy | M |
@@ -202,7 +204,7 @@ Consequence, accepted: while restricted, nobody can review deposits. Reported pa
 1. Deposits are optional. The organization rule is no deposit, a fixed amount, or a percentage, with a per-service override. A deposit that is set is greater than zero.
 2. Money never passes through GroomBox. Clients pay the shop; owners pay GroomBox against statements.
 3. With a deposit, the amount due at booking is deposit plus convenience fee; the deposit is deducted at checkout and the fee is not. Without a deposit, nothing is due at booking and the fee is added to the bill at checkout.
-4. Prices, deposits, and fees are calculated by the database, never taken from the browser.
+4. Prices, deposits, and fees are calculated by the database, never taken from the browser. A service's price comes from the branch's time-based rule for the booking's start time, then the branch price, then the catalogue price.
 5. Payment details are copied onto the booking when it is made, so later edits do not change what the client was told.
 6. A booking is one client, one staff member, and one or more services back to back.
 7. Commission is a percentage of each item's price after discount. Tips go fully to the staff member who performed the service.

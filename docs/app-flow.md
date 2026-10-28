@@ -52,9 +52,9 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/shop/:branchId/visit/:bookingId` | Visit detail and checkout | All |
 | `/shop/:branchId/close` | Daily close | Owner, manager |
 | `/shop/clients` | Client list and detail | Owner, manager |
-| `/shop/setup/services` | Service catalogue; branch offerings and price overrides | Owner; managers for branch offerings and prices |
+| `/shop/setup/services` | Service catalogue; branch offerings, price overrides, and time-based prices | Owner; managers for branch offerings and prices |
 | `/shop/setup/staff` | Staff, shifts, commission | Owner; managers for branch assignments, shifts, and time off |
-| `/shop/setup/branches` | Branches, hours, payment details | Owner |
+| `/shop/setup/branches` | Branches, opening periods, business-day start, payment details | Owner |
 | `/shop/setup/policies` | Deposit rule, hold and review times, cancellation policy, directory listing | Owner |
 | `/shop/team` | Members and invites | Owner |
 | `/shop/billing` | Fee statements and how to pay | Owner |
@@ -82,10 +82,10 @@ After sign-in, a user with both a client profile and a membership lands on the s
 
 ## 4. Flow: online booking
 
-1. **Branch page.** The client sees services grouped by category with price and duration, and taps "Book".
+1. **Branch page.** The client sees services grouped by category with price and duration (a price range when prices vary by time), and taps "Book".
 2. **Services.** Pick one or more. A running total and total duration show at the bottom.
 3. **Staff.** Pick a staff member who performs all chosen services, or "Any available".
-4. **Date and time.** Pick a date; open start times load for that date. Unavailable days are disabled.
+4. **Date and time.** Pick a date; open start times load for that date, each with its service total when prices vary by time. Unavailable days are disabled.
 5. **Sign in and details.** A visitor signs in with Google or Facebook; inside Messenger or Instagram the app first asks them to open the page in their phone's browser. The chosen services, staff, and time are kept. The client confirms name and mobile number.
 6. **Review.** Shows services, staff, time, service total, deposit, convenience fee, amount due now, balance due at the shop, and the cancellation policy. The client ticks to accept the policy and taps "Hold my slot". When the services take no deposit, nothing is due now, the fee shows as payable at the shop, and the button is "Book": the booking is confirmed at once and steps 7 to 10 are skipped.
 7. **Pay.** The slot is held. The screen shows a countdown, the amount due, and the branch's payment details and QR. The client pays in their own e-wallet app.
@@ -183,7 +183,7 @@ The convenience fee entry is created on the move to `confirmed` from a deposit r
 ## 10. Flow: owner onboarding
 
 1. After the application is approved, open `/onboarding`. The organization name and category come from the application and can be adjusted.
-2. Add the first branch: name, address, area, hours.
+2. Add the first branch: name, address, area, and opening periods for each day (several per day, or past midnight).
 3. Add deposit payment details and a QR image, if any service will take a deposit.
 4. Add services, or start from a template for the chosen category.
 5. Add staff and their shifts.
