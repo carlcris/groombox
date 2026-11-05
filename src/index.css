@@ -1,0 +1,143 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Self-hosted variable fonts: the Latin subset only, plus the peso sign (U+20B1), which sits in
+   Inter's latin-ext file. The unicode-range limits that file to the one character, so it downloads
+   only on pages that show an amount (design brief §3). */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+20B1;
+}
+
+@font-face {
+  font-family: "Outfit Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-heading: "Outfit Variable", "Inter Variable", system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand-accent: var(--brand-accent);
+
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-info: var(--info);
+  --color-info-surface: var(--info-surface);
+  --color-neutral: var(--neutral);
+  --color-neutral-surface: var(--neutral-surface);
+}
+
+/* Token mapping (design brief §2). Components use these tokens, never palette names. */
+:root {
+  --background: var(--color-stone-50);
+  --foreground: var(--color-stone-900);
+  --card: var(--color-white);
+  --card-foreground: var(--color-stone-900);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-stone-900);
+  --primary: var(--color-teal-700);
+  --primary-hover: var(--color-teal-800);
+  --primary-foreground: var(--color-white);
+  --secondary: var(--color-stone-100);
+  --secondary-foreground: var(--color-stone-900);
+  --muted: var(--color-stone-100);
+  --muted-foreground: var(--color-stone-600);
+  --accent: var(--color-teal-50);
+  --accent-foreground: var(--color-teal-800);
+  --destructive: var(--color-red-700);
+  --destructive-foreground: var(--color-white);
+  --border: var(--color-stone-200);
+  --input: var(--color-stone-500);
+  --ring: var(--color-teal-700);
+  --brand-accent: var(--color-amber-400);
+
+  --success: var(--color-green-700);
+  --success-surface: var(--color-green-50);
+  --warning: var(--color-amber-800);
+  --warning-surface: var(--color-amber-50);
+  --danger: var(--color-red-700);
+  --danger-surface: var(--color-red-50);
+  --info: var(--color-sky-700);
+  --info-surface: var(--color-sky-50);
+  --neutral: var(--color-stone-700);
+  --neutral-surface: var(--color-stone-100);
+}
+
+/* Dark theme: defined, not shipped at launch. */
+.dark {
+  --background: var(--color-stone-950);
+  --foreground: var(--color-stone-50);
+  --card: var(--color-stone-900);
+  --card-foreground: var(--color-stone-50);
+  --popover: var(--color-stone-900);
+  --popover-foreground: var(--color-stone-50);
+  --primary: var(--color-teal-400);
+  --primary-hover: var(--color-teal-300);
+  --primary-foreground: var(--color-stone-950);
+  --muted-foreground: var(--color-stone-400);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-heading leading-tight;
+  }
+  input,
+  select,
+  textarea {
+    @apply text-base;
+  }
+}

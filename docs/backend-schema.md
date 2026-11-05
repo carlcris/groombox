@@ -20,8 +20,10 @@ This is the design the first migrations are written from. Exact SQL lives in `su
   - `booking_code` is 12 random characters from Crockford's base32 alphabet (no I, L, O, or U), shown in groups of four, for example `7K2M-QX9D-4HTB`. The booking link carries it and anyone holding it can open the booking (`get_booking_by_code`), so it must be unguessable.
   - `statement_code` is short and readable, because only the owner and platform admins see it.
 - Snapshots and loosely structured metadata are `jsonb`.
+- Internal helpers (row-level security lookups, logging, code and slug generators) live in schema `private`, which PostgREST does not expose.
+- Functions raise coded errors with SQLSTATE class `GB`, and the app maps each code to a safe message: `GBA01` sign-in required, `GBA02` not permitted, `GBI01` invite unavailable, `GBI02` already a member, `GBM01` owner membership locked. Later phases add their codes here.
 - Row-level security is enabled on every table. No table is readable or writable without a policy.
-- Tables that accept direct single-row writes under row-level security have an `AFTER` trigger that writes the `activity_logs` row: `profiles`, `organizations`, `branches`, `branch_hours`, `branch_closures`, `branch_media`, `branch_services`, `service_categories`, `services`, `staff`, `staff_branches`, `staff_services`, `staff_shifts`, `staff_time_off`, `clients`, and `platform_settings`. The shared trigger function is `SECURITY DEFINER`, because callers cannot insert into `activity_logs` themselves, and writes only the actor, table, row id, action, and allow-listed changed column names. `notifications.read_at` updates are not logged. A new directly writable table gets the trigger in the same migration.
+- Tables that accept direct single-row writes under row-level security have an `AFTER` trigger that writes the `activity_logs` row: `profiles`, `organizations`, `branches`, `branch_hours`, `branch_closures`, `branch_media`, `branch_services`, `service_categories`, `services`, `staff`, `staff_branches`, `staff_services`, `staff_shifts`, `staff_time_off`, `clients`, and `platform_settings`. The shared trigger function runs with the caller's rights and logs only writes made directly by an app role (`authenticated` or `anon`); it writes through `private.log_activity`, which is `SECURITY DEFINER` because callers cannot insert into `activity_logs` themselves. It records only the actor, table, row id, action, and allow-listed changed column names. Database functions run as `SECURITY DEFINER` and write their own activity row, so the trigger skips their writes and nothing is logged twice. `notifications.read_at` updates are not logged. A new directly writable table gets the trigger in the same migration.
 
 ## 2. Enums
 
@@ -101,7 +103,7 @@ One row per auth user, created by a trigger on `auth.users`. This is the platfor
 | `restricted_at` | `timestamptz` | |
 | `restriction_reason` | `org_restriction_reason` | Set with `restricted_at`; null while active |
 | `deposit_type` | `deposit_type` | Default `fixed` |
-| `deposit_fixed_amount` | `numeric(20,2)` | Per service, when `fixed`; greater than zero |
+| `deposit_fixed_amount` | `numeric(20,2)` | Per service, when `fixed`; greater than zero. Default 100.00, so a new organization starts with a valid rule |
 | `deposit_percent` | `numeric(5,2)` | Of each service's price, when `percent`; above 0 and at most 100 |
 | `hold_minutes` | `smallint` | Default 15 |
 | `review_hours` | `smallint` | Default 12 |
@@ -143,7 +145,7 @@ Exactly one of `deposit_fixed_amount` and `deposit_percent` is set, the one matc
 | `closes_next_day` | `boolean` | Default false. True when the branch closes after midnight, for example 2:00 PM to 2:00 AM |
 | `is_closed` | `boolean` | |
 
-Hours that run past midnight belong to the day they open: Saturday's row covers Saturday 2:00 PM to Sunday 2:00 AM. They must close by the branch's `business_day_start`, so one opening never spans two business dates; the setup screen checks this.
+Hours that run past midnight belong to the day they open: Saturday's row covers Saturday 2:00 PM to Sunday 2:00 AM. They open at or after the branch's `business_day_start` and close by it, so one opening never spans two business dates; the setup screen checks this.
 
 ### `branch_closures`
 
@@ -177,11 +179,11 @@ Index on `(user_id, organization_id)` where `is_active`, to support policy looku
 |---|---|---|
 | `id` | `uuid` PK | |
 | `organization_id` | `uuid` | |
-| `code` | `text` unique | Random, unguessable |
+| `code` | `text` unique | 16 random Crockford base32 characters, unguessable |
 | `role` | `member_role` | `manager` or `staff` |
 | `branch_ids` | `uuid[]` | |
 | `staff_id` | `uuid` | Optional staff profile; `accept_invite` sets that profile's `member_id` |
-| `expires_at` | `timestamptz` | |
+| `expires_at` | `timestamptz` | Seven days after creation |
 | `accepted_by`, `accepted_at` | | Single use |
 | `created_by`, `created_at` | | |
 
@@ -236,7 +238,7 @@ Index on `(user_id, organization_id)` where `is_active`, to support policy looku
 
 ### `staff_shifts`
 
-`id`, `organization_id`, `staff_id`, `branch_id`, `day_of_week`, `starts_at time`, `ends_at time`, `ends_next_day boolean` (default false). Index on `(branch_id, day_of_week)`. A shift past midnight follows the same rule as branch hours: it belongs to the day it starts and ends by the branch's `business_day_start`.
+`id`, `organization_id`, `staff_id`, `branch_id`, `day_of_week`, `starts_at time`, `ends_at time`, `ends_next_day boolean` (default false). Index on `(branch_id, day_of_week)`. A shift past midnight follows the same rule as branch hours: it belongs to the day it starts, starts at or after the branch's `business_day_start`, and ends by it.
 
 ### `staff_time_off`
 
@@ -465,6 +467,8 @@ A branch's **deposit reviewers** are the owner, the managers assigned to the bra
 | `my_bookings` | The signed-in user | Own bookings with branch and service summary |
 | `unbilled_fee_summary` | Owner | Running balance by branch |
 | `platform_billing_details` | Owners of any organization, whatever its access status | `payment_instructions` from `platform_settings`, so owners know how to pay GroomBox |
+| `my_memberships` | The signed-in user | Own active memberships: member id, organization id, name, slug, and access status, role, deposit-review permission. Runs with the view owner's rights so a member of a restricted organization still learns it is restricted; returns only the caller's rows |
+| `my_branches` | The signed-in user | Active branches the caller works in: all of an owner's, the assigned ones for managers and staff |
 
 Views run with the caller's rights (`security_invoker`) unless they must expose columns from tables the caller cannot read, in which case they select only public columns.
 
@@ -545,20 +549,17 @@ Column grants on the owner's direct updates:
 - `organizations`: `name`, `logo_path`, `category`, `is_listed`, `deposit_type`, `deposit_fixed_amount`, `deposit_percent`, `hold_minutes`, `review_hours`, `slot_interval_minutes`, `min_notice_minutes`, `booking_horizon_days`, `cancellation_policy`. Not `slug` (insert-only, because it is in shared links and printed QR codes), `access_status`, `restricted_at`, and `restriction_reason` (only `set_organization_access`, `restrict_overdue_organizations`, `mark_statement_paid`, and `void_statement`), or `terms_accepted_at` and `terms_accepted_by` (only `accept_terms`).
 - `branches`: `name`, `address`, `city`, `area`, `latitude`, `longitude`, `timezone`, `business_day_start`, `contact_number`, `payment_instructions`, `is_published`, `is_active`. Not `slug` or `organization_id`, which are insert-only.
 
-"Accessible organization" means `access_status = 'active'`. Membership is resolved with a set-based lookup:
+"Accessible organization" means `access_status = 'active'`. Policies resolve membership with set-returning helpers in schema `private`, used as `organization_id in (select private.accessible_organization_ids())`:
 
-```sql
-organization_id in (
-  select m.organization_id
-  from organization_members m
-  join organizations o on o.id = m.organization_id
-  where m.user_id = (select auth.uid())
-    and m.is_active
-    and o.access_status = 'active'
-)
-```
+| Helper | Returns |
+|---|---|
+| `accessible_organization_ids()` | Organizations where the caller is an active member and access is active |
+| `owned_organization_ids()` | The same, limited to the owner role |
+| `branch_ids_with_role(roles)` | Branches of accessible organizations where the caller holds one of the roles: every branch for an owner, the assigned ones for a manager or staff member |
+| `colleague_user_ids()` | Users who are active members of the caller's accessible organizations |
+| `is_platform_admin()` | Whether the caller has a `platform_admins` row; used as a scalar subquery |
 
-Branch-scoped policies add a second lookup through `member_branches`. Platform admin access uses a caller-invariant check on `platform_admins`, written as a scalar subquery so it runs once per statement. Policy changes are measured as an authenticated role, per the repository's RLS performance rule.
+They are `SECURITY DEFINER` because the membership tables' own policies use them: a direct subquery on `organization_members` inside its own policy, or inside the `organizations` policy, recurses. None takes a row-varying argument, so each runs once per statement. Policy changes are measured as an authenticated role, per the repository's RLS performance rule.
 
 ## 14. Storage
 

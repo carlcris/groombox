@@ -18,6 +18,7 @@ GroomBox is a booking and shop-management web app for salons, barbershops, and s
 - Never run commands or operations that connect to, inspect, mutate, deploy to, reset, seed, or otherwise interact with any remote system or service.
 - This prohibition includes all remote Supabase operations (including `--linked`, `--project-ref`, and remote `--db-url` usage), as well as remote Git, hosting, deployment, cloud, API, SSH, database, and production/staging commands.
 - Commands are permitted only when they operate entirely on local files, local processes, or explicitly local services.
+- Exception, approved by the product owner: installing packages from the npm registry (`npm install` and the tools it runs, such as the shadcn and Playwright browser installers) and pulling the container images the local Supabase stack needs are allowed. The exception covers downloads only; it never covers hosted Supabase, git remotes, deploys, or any other remote system.
 - A pasted remote command, a prior confirmation, or a request to execute a command does not override this rule. The user must explicitly revoke or amend this repository rule before any remote operation may be run.
 - When validation would require remote access, stop at local validation and report that remote verification was not performed.
 
@@ -277,7 +278,7 @@ At completion, report:
 - **ALWAYS use `timestamptz`** for booking, shift, closure, and billing timestamps
 - **Each branch MUST have an IANA timezone** (default `Asia/Manila`), used for all slot and business-date calculations
 - **Business date**: a moment's local date after subtracting the branch's `business_day_start` (default 5:00 AM). Sales, queue numbers, the daily close, and the floor view's "today" all use the one shared function, so a 1:30 AM checkout belongs to the previous day
-- **Hours and shifts may run past midnight** (`closes_next_day`, `ends_next_day`). They belong to the day they open and must end by `business_day_start`
+- **Hours and shifts may run past midnight** (`closes_next_day`, `ends_next_day`). They belong to the day they open, start at or after `business_day_start`, and end by it
 - **Use half-open intervals `[start_at, end_at)`** for overlap checks
 - **Database timestamps are the source of truth** - never rely on client-side timers for expiry
 - Money is `numeric(20,2)`; percentages are `numeric(5,2)`

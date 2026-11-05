@@ -193,7 +193,7 @@ Clients cancel before the start time. Cancelling a booking with a reported payme
 ## 10. Flow: owner onboarding
 
 1. Sign up, then name the organization and choose its category.
-2. Add the first branch: name, address, city, area, hours. A day's hours can close after midnight ("closes next day"), up to the start of the next business day (5:00 AM unless changed).
+2. Add the first branch: name, address, city, area, hours. A day's hours start at or after the start of the business day (5:00 AM unless changed) and can close after midnight ("closes next day"), up to the start of the next business day.
 3. Add deposit payment details and a QR image.
 4. Add services.
 5. Add staff and their shifts.

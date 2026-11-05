@@ -45,8 +45,8 @@ Total: roughly 15–20 weeks. The earlier plan said 13–15; the difference come
 **Build**
 - Vite, React, TypeScript, TanStack Router and Query, Tailwind, shadcn/ui, with the design tokens from the design brief.
 - Supabase local project; migration tooling, baseline file and check script, type generation.
-- Tables: `profiles`, `platform_admins`, `platform_settings`, `organizations`, `branches`, `organization_members`, `member_branches`, `organization_invites`, `activity_logs`, `notifications`.
-- Composite foreign keys on `(parent_id, organization_id)` from the first migration; the shared business date function.
+- Tables: `profiles`, `platform_admins`, `platform_settings`, `organizations`, `branches`, `branch_hours` (the first branch's hours are saved with the organization), `organization_members`, `member_branches`, `organization_invites`, `activity_logs`, `notifications`.
+- Composite foreign keys on `(parent_id, organization_id)` from the first migration.
 - Row-level rules and the membership lookup, including the restricted-organization rule.
 - Sign-up and sign-in for owners and members; route guards per audience.
 - `create_organization`; invites with `get_invite_preview`; team screen with `update_member` and `remove_member`; branch switcher.
@@ -62,13 +62,13 @@ Total: roughly 15–20 weeks. The earlier plan said 13–15; the difference come
 
 **Build**
 - Categories, services, branch offerings and price overrides.
-- Staff, branch and service assignments, shifts (including past midnight), time off, commission rates.
+- Staff, branch and service assignments, shifts (including past midnight), time off, commission rates; `organization_invites.staff_id`, which needs the staff table.
 - Branch hours (including past midnight), business day start, closures, photos, payment details and QR upload.
 - Deposit rule (fixed per service or percentage, with per-service overrides), hold and review times, booking window, cancellation policy, directory listing switch; terms acceptance through `accept_terms`.
 - Column grants that keep slugs, access status, and terms acceptance out of the owner's direct updates.
 - Onboarding checklist, publish and unpublish, and the screen rules that keep a published branch complete.
 - Audit triggers on the setup tables that take direct writes.
-- Storage buckets and policies.
+- Storage buckets and policies. The baseline check's disposable databases come from the bare Postgres image, which has no storage service tables, so this phase also loads the storage schema into them before comparing buckets.
 
 **Exit criteria**
 - An owner takes a new organization from empty to a published branch using only the app.
@@ -78,7 +78,7 @@ Total: roughly 15–20 weeks. The earlier plan said 13–15; the difference come
 ### Phase 3: booking engine and public booking
 
 **Build**
-- `bookings`, `booking_services`, `clients`; the exclusion constraint.
+- `bookings`, `booking_services`, `clients`; the exclusion constraint; the shared business date function.
 - `get_available_slots` and `create_online_booking`, with "any available", the booking window, buffers, and the two-hold limit.
 - Public views; branch and organization pages; the booking flow through to the held state, with acceptance of the policy and privacy notice.
 - Guest sessions with the bot check and Auth rate limits; client sign-in with Google and Facebook; in-app browser detection. Local tests use Turnstile test keys and seeded email users (TRD §14).

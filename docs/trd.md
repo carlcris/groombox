@@ -186,13 +186,13 @@ In-app only. Database functions insert notification rows as part of the operatio
 
 ## 13. Environments
 
-- **Local**: Supabase CLI with Docker. All development and tests run here.
+- **Local**: Supabase CLI with Docker. All development and tests run here. GroomBox's local stack uses ports 56320–56329 (API on 56321, database on 56322, Studio on 56323, Mailpit on 56324), so it can run beside other local Supabase projects. `.env.local` holds the API URL and the publishable key from `supabase status -o env`; `.env.example` lists the variables.
 - **Hosted**: one Supabase project and one static site for the pilot. Repository rules (`AGENTS.md`) forbid coding agents from running any command against a remote system, so the product owner applies migrations and deploys.
 - Environment variables in the app are limited to the Supabase URL and the public anon key.
 
 ## 14. Testing
 
-- End-to-end tests with Playwright are the main mechanism, written per feature before it is called done, running against local Supabase with seed data. Each run keeps its HTML report, with traces for failed tests.
+- End-to-end tests with Playwright are the main mechanism, written per feature before it is called done, running against local Supabase with seed data. They run on a phone and a desktop viewport against a production build served by `vite preview`, so they exercise the shipped bundle. Each run keeps its HTML report in `playwright-report/`, with traces for failed tests.
 - pgTAP tests cover row-level rules: each role, each tenant boundary, restricted organizations, and anonymous users.
 - **Sign-in in local tests**: tests never reach Google, Facebook, or Cloudflare. The bot check runs locally with Cloudflare Turnstile's published test keys (always pass, and always fail for the negative case). Clients sign in as seeded email users in place of social sign-in. The guest upgrade test converts the anonymous user through the Auth API and checks that the user id and bookings are kept. The product owner checks real Google and Facebook sign-in by hand on the hosted project.
 - **Guest limits** are the bot check, Supabase Auth's rate limits on anonymous sign-ins (set in `supabase/config.toml`), and the two-hold limit in `create_online_booking`. Each has a test.
