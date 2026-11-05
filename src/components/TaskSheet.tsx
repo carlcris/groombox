@@ -22,7 +22,7 @@ export function TaskSheet({
   if (isTabletUp) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-dvh max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading text-xl">{title}</DialogTitle>
             {description ? <DialogDescription>{description}</DialogDescription> : null}

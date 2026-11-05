@@ -1,4 +1,4 @@
-import type { HTMLInputTypeAttribute } from "react";
+import type { HTMLAttributes, HTMLInputTypeAttribute } from "react";
 import { fieldIds, FormField, firstFieldError } from "@/components/FormField";
 import { Input } from "@/components/ui/input";
 
@@ -7,6 +7,7 @@ export function TextField({
   label,
   hint,
   type = "text",
+  inputMode,
   autoComplete,
   value,
   errors,
@@ -17,6 +18,7 @@ export function TextField({
   label: string;
   hint?: string;
   type?: HTMLInputTypeAttribute;
+  inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   autoComplete?: string;
   value: string;
   errors: readonly unknown[];
@@ -31,6 +33,7 @@ export function TextField({
         id={id}
         name={id}
         type={type}
+        inputMode={inputMode ?? (type === "number" ? "decimal" : undefined)}
         autoComplete={autoComplete}
         value={value}
         aria-invalid={error ? true : undefined}

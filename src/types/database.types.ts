@@ -50,6 +50,68 @@ export type Database = {
           },
         ]
       }
+      branch_closures: {
+        Row: {
+          branch_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          organization_id: string
+          reason: string | null
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          organization_id: string
+          reason?: string | null
+          starts_at: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          organization_id?: string
+          reason?: string | null
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_closures_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "branch_setup_status"
+            referencedColumns: ["branch_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "branch_closures_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "branch_closures_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "my_branches"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "branch_closures_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branch_hours: {
         Row: {
           branch_id: string
@@ -89,6 +151,13 @@ export type Database = {
             foreignKeyName: "branch_hours_branch_id_organization_id_fkey"
             columns: ["branch_id", "organization_id"]
             isOneToOne: false
+            referencedRelation: "branch_setup_status"
+            referencedColumns: ["branch_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "branch_hours_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
             referencedRelation: "branches"
             referencedColumns: ["id", "organization_id"]
           },
@@ -105,6 +174,125 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      branch_media: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          sort_order: number
+          storage_path: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          sort_order?: number
+          storage_path: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          sort_order?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_media_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "branch_setup_status"
+            referencedColumns: ["branch_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "branch_media_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "branch_media_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "my_branches"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "branch_media_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branch_services: {
+        Row: {
+          branch_id: string
+          created_at: string
+          organization_id: string
+          price_override: number | null
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          organization_id: string
+          price_override?: number | null
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          organization_id?: string
+          price_override?: number | null
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_services_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "branch_setup_status"
+            referencedColumns: ["branch_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "branch_services_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "branch_services_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "my_branches"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "branch_services_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_services_service_id_organization_id_fkey"
+            columns: ["service_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id", "organization_id"]
           },
         ]
       }
@@ -196,6 +384,13 @@ export type Database = {
           organization_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "member_branches_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "branch_setup_status"
+            referencedColumns: ["branch_id", "organization_id"]
+          },
           {
             foreignKeyName: "member_branches_branch_id_organization_id_fkey"
             columns: ["branch_id", "organization_id"]
@@ -299,6 +494,7 @@ export type Database = {
           id: string
           organization_id: string
           role: Database["public"]["Enums"]["member_role"]
+          staff_id: string | null
         }
         Insert: {
           accepted_at?: string | null
@@ -311,6 +507,7 @@ export type Database = {
           id?: string
           organization_id: string
           role: Database["public"]["Enums"]["member_role"]
+          staff_id?: string | null
         }
         Update: {
           accepted_at?: string | null
@@ -323,6 +520,7 @@ export type Database = {
           id?: string
           organization_id?: string
           role?: Database["public"]["Enums"]["member_role"]
+          staff_id?: string | null
         }
         Relationships: [
           {
@@ -345,6 +543,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_invites_staff_id_organization_id_fkey"
+            columns: ["staff_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id", "organization_id"]
           },
         ]
       }
@@ -575,8 +780,416 @@ export type Database = {
         }
         Relationships: []
       }
+      service_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_categories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          buffer_minutes: number
+          category_id: string
+          created_at: string
+          deposit_fixed_amount: number | null
+          deposit_percent: number | null
+          deposit_type: Database["public"]["Enums"]["deposit_type"] | null
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          price: number
+          price_is_starting: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          buffer_minutes?: number
+          category_id: string
+          created_at?: string
+          deposit_fixed_amount?: number | null
+          deposit_percent?: number | null
+          deposit_type?: Database["public"]["Enums"]["deposit_type"] | null
+          description?: string | null
+          duration_minutes: number
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          price: number
+          price_is_starting?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          buffer_minutes?: number
+          category_id?: string
+          created_at?: string
+          deposit_fixed_amount?: number | null
+          deposit_percent?: number | null
+          deposit_type?: Database["public"]["Enums"]["deposit_type"] | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          price?: number
+          price_is_starting?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_category_id_organization_id_fkey"
+            columns: ["category_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "service_categories"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "services_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff: {
+        Row: {
+          commission_percent: number
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean
+          is_bookable: boolean
+          member_id: string | null
+          organization_id: string
+          photo_path: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          commission_percent?: number
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean
+          is_bookable?: boolean
+          member_id?: string | null
+          organization_id: string
+          photo_path?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          commission_percent?: number
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          is_bookable?: boolean
+          member_id?: string | null
+          organization_id?: string
+          photo_path?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_member_id_organization_id_fkey"
+            columns: ["member_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "my_memberships"
+            referencedColumns: ["member_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "staff_member_id_organization_id_fkey"
+            columns: ["member_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_members"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "staff_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_branches: {
+        Row: {
+          branch_id: string
+          created_at: string
+          organization_id: string
+          staff_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          organization_id: string
+          staff_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          organization_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_branches_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "branch_setup_status"
+            referencedColumns: ["branch_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "staff_branches_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "staff_branches_branch_id_organization_id_fkey"
+            columns: ["branch_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "my_branches"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "staff_branches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_branches_staff_id_organization_id_fkey"
+            columns: ["staff_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      staff_services: {
+        Row: {
+          commission_percent_override: number | null
+          created_at: string
+          organization_id: string
+          service_id: string
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_percent_override?: number | null
+          created_at?: string
+          organization_id: string
+          service_id: string
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          commission_percent_override?: number | null
+          created_at?: string
+          organization_id?: string
+          service_id?: string
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_services_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_services_service_id_organization_id_fkey"
+            columns: ["service_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "staff_services_staff_id_organization_id_fkey"
+            columns: ["staff_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      staff_shifts: {
+        Row: {
+          branch_id: string
+          created_at: string
+          day_of_week: number
+          ends_at: string
+          ends_next_day: boolean
+          id: string
+          organization_id: string
+          staff_id: string
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          day_of_week: number
+          ends_at: string
+          ends_next_day?: boolean
+          id?: string
+          organization_id: string
+          staff_id: string
+          starts_at: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          day_of_week?: number
+          ends_at?: string
+          ends_next_day?: boolean
+          id?: string
+          organization_id?: string
+          staff_id?: string
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_shifts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_shifts_staff_id_branch_id_fkey"
+            columns: ["staff_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "staff_branches"
+            referencedColumns: ["staff_id", "branch_id"]
+          },
+          {
+            foreignKeyName: "staff_shifts_staff_id_organization_id_fkey"
+            columns: ["staff_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      staff_time_off: {
+        Row: {
+          created_at: string
+          ends_at: string
+          id: string
+          organization_id: string
+          reason: string | null
+          staff_id: string
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          id?: string
+          organization_id: string
+          reason?: string | null
+          staff_id: string
+          starts_at: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          id?: string
+          organization_id?: string
+          reason?: string | null
+          staff_id?: string
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_time_off_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_time_off_staff_id_organization_id_fkey"
+            columns: ["staff_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
     }
     Views: {
+      branch_setup_status: {
+        Row: {
+          bookable_staff_with_shift_count: number | null
+          branch_id: string | null
+          has_location: boolean | null
+          has_payment_details: boolean | null
+          is_published: boolean | null
+          offered_service_count: number | null
+          open_day_count: number | null
+          organization_id: string | null
+          terms_accepted: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       my_branches: {
         Row: {
           business_day_start: string | null
@@ -635,11 +1248,24 @@ export type Database = {
     }
     Functions: {
       accept_invite: { Args: { p_code: string }; Returns: string }
+      accept_terms: { Args: { p_organization_id: string }; Returns: undefined }
+      create_branch: {
+        Args: {
+          p_address: string
+          p_area: string
+          p_branch_name: string
+          p_city: string
+          p_hours: Json
+          p_organization_id: string
+        }
+        Returns: string
+      }
       create_invite: {
         Args: {
           p_branch_ids: string[]
           p_organization_id: string
           p_role: Database["public"]["Enums"]["member_role"]
+          p_staff_id?: string
         }
         Returns: {
           code: string
@@ -672,6 +1298,26 @@ export type Database = {
         }[]
       }
       remove_member: { Args: { p_member_id: string }; Returns: undefined }
+      save_staff_profile: {
+        Args: {
+          p_branch_ids: string[]
+          p_commission_percent: number
+          p_display_name: string
+          p_is_active: boolean
+          p_is_bookable: boolean
+          p_member_id?: string
+          p_organization_id: string
+          p_photo_path?: string
+          p_services: Json
+          p_staff_id?: string
+          p_title?: string
+        }
+        Returns: string
+      }
+      set_branch_hours: {
+        Args: { p_branch_id: string; p_hours: Json }
+        Returns: undefined
+      }
       update_member: {
         Args: {
           p_branch_ids: string[]

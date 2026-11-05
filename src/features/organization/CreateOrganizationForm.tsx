@@ -5,17 +5,14 @@ import { fieldIds, FormField, firstFieldError } from "@/components/FormField";
 import { FormErrorAlert } from "@/components/FormErrorAlert";
 import { TextField } from "@/components/TextField";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  dayHoursSchema,
   defaultBusinessDayStart,
   defaultWeekHours,
   toBranchHoursPayload,
-  weekdayDisplayOrder,
+  weekHoursSchema,
 } from "@/features/organization/branch-hours-schema";
+import { WeekHoursEditor } from "@/features/organization/WeekHoursEditor";
 import { organizationCategories, type OrganizationCategory } from "@/features/organization/organization-categories";
 import { messages } from "@/lib/messages";
 import { supabase } from "@/lib/supabase-client";
@@ -29,7 +26,7 @@ const createOrganizationSchema = z.object({
   address: required,
   city: required,
   area: required,
-  hours: z.array(dayHoursSchema(defaultBusinessDayStart)),
+  hours: weekHoursSchema(defaultBusinessDayStart, { requireOpenDay: false }),
 });
 
 type CreateOrganizationValues = {
@@ -205,85 +202,21 @@ export function CreateOrganizationForm({ onCreated }: { onCreated: (created: Cre
           </h2>
           <p className="text-sm text-muted-foreground">{messages.onboarding.hoursIntro}</p>
         </div>
-        <ul className="flex flex-col gap-3">
-          {weekdayDisplayOrder.map((dayOfWeek) => (
-            <li key={dayOfWeek} className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm">
-              <form.Subscribe selector={(state) => state.values.hours[dayOfWeek]?.isClosed ?? false}>
-                {(isClosed) => (
-                  <>
-                    <div className="flex items-center justify-between gap-3">
-                      <h3 className="text-lg font-medium">{messages.hours.days[dayOfWeek]}</h3>
-                      <form.Field name={`hours[${dayOfWeek}].isClosed`}>
-                        {(field) => (
-                          <Label className="flex min-h-11 items-center gap-2 text-base font-normal">
-                            <Checkbox
-                              checked={field.state.value}
-                              onCheckedChange={(checked) => field.handleChange(checked === true)}
-                            />
-                            {messages.hours.closed}
-                          </Label>
-                        )}
-                      </form.Field>
-                    </div>
-                    {isClosed ? null : (
-                      <div className="grid grid-cols-2 gap-3">
-                        <form.Field name={`hours[${dayOfWeek}].opensAt`}>
-                          {(field) => {
-                            const id = `opens-${dayOfWeek}`;
-                            const error = firstFieldError(field.state.meta.errors);
-                            return (
-                              <FormField id={id} label={messages.hours.opens} error={error}>
-                                <Input
-                                  id={id}
-                                  type="time"
-                                  value={field.state.value}
-                                  aria-invalid={error ? true : undefined}
-                                  aria-describedby={fieldIds(id).errorId}
-                                  onChange={(event) => field.handleChange(event.target.value)}
-                                  onBlur={field.handleBlur}
-                                />
-                              </FormField>
-                            );
-                          }}
-                        </form.Field>
-                        <form.Field name={`hours[${dayOfWeek}].closesAt`}>
-                          {(field) => {
-                            const id = `closes-${dayOfWeek}`;
-                            const error = firstFieldError(field.state.meta.errors);
-                            return (
-                              <FormField id={id} label={messages.hours.closes} error={error}>
-                                <Input
-                                  id={id}
-                                  type="time"
-                                  value={field.state.value}
-                                  aria-invalid={error ? true : undefined}
-                                  aria-describedby={fieldIds(id).errorId}
-                                  onChange={(event) => field.handleChange(event.target.value)}
-                                  onBlur={field.handleBlur}
-                                />
-                              </FormField>
-                            );
-                          }}
-                        </form.Field>
-                        <form.Field name={`hours[${dayOfWeek}].closesNextDay`}>
-                          {(field) => (
-                            <Label className="col-span-2 flex min-h-11 items-center gap-2 text-base font-normal">
-                              <Checkbox
-                                checked={field.state.value}
-                                onCheckedChange={(checked) => field.handleChange(checked === true)}
-                              />
-                              {messages.hours.closesNextDay}
-                            </Label>
-                          )}
-                        </form.Field>
-                      </div>
-                    )}
-                  </>
-                )}
-              </form.Subscribe>
-            </li>
-          ))}
-        </ul>
+        <form.Subscribe selector={(state) => state.submissionAttempts > 0}>
+          {(submitted) => (
+            <form.Field name="hours">
+              {(field) => (
+                <WeekHoursEditor
+                  idPrefix="onboarding"
+                  value={field.state.value}
+                  businessDayStart={defaultBusinessDayStart}
+                  showProblems={submitted}
+                  onChange={field.handleChange}
+                />
+              )}
+            </form.Field>
+          )}
+        </form.Subscribe>
       </section>
 
       <FormErrorAlert error={createOrganization.error} />

@@ -53,6 +53,7 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/shop/:branchId/setup` | Branch hours (including past midnight), closures, photos, service offerings and price overrides, staff shifts and time off | Owner, manager |
 | `/shop/clients` | Client list and detail | Owner, manager |
 | `/shop/notifications` | Notification list | All |
+| `/shop/setup` | Links to the organization-wide setup screens | Owner |
 | `/shop/setup/organization` | Organization name, logo, and category | Owner |
 | `/shop/setup/services` | Service catalogue | Owner |
 | `/shop/setup/staff` | Staff profiles, branch and service assignments, commission | Owner |

@@ -89,11 +89,17 @@ export function inviteLink(code: string): string {
   return `${window.location.origin}/invite/${code}`;
 }
 
-export async function createInvite(input: { organizationId: string; role: MemberRole; branchIds: string[] }) {
+export async function createInvite(input: {
+  organizationId: string;
+  role: MemberRole;
+  branchIds: string[];
+  staffId: string | null;
+}) {
   const { data, error } = await supabase.rpc("create_invite", {
     p_organization_id: input.organizationId,
     p_role: input.role,
     p_branch_ids: input.branchIds,
+    p_staff_id: input.staffId ?? undefined,
   });
   if (error) throw error;
   const invite = data[0];

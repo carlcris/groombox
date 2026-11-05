@@ -1,3 +1,4 @@
+import { PublishGuardError } from "@/features/organization/publish-guard-error";
 import { messages } from "@/lib/messages";
 
 // Database functions raise coded errors (SQLSTATE class GB) and Supabase Auth returns error codes.
@@ -10,6 +11,8 @@ const databaseErrorMessages: Record<string, string> = {
   GBI02: messages.errors.alreadyMember,
   GBM01: messages.errors.ownerMembershipLocked,
   "42501": messages.errors.notPermitted,
+  "23503": messages.errors.stillInUse,
+  "23505": messages.errors.alreadyTaken,
 };
 
 const authErrorMessages: Record<string, string> = {
@@ -28,6 +31,7 @@ function readCode(error: object): string | null {
 }
 
 export function describeError(error: unknown): string {
+  if (error instanceof PublishGuardError) return error.message;
   if (error instanceof TypeError) return messages.errors.network;
   if (typeof error !== "object" || error === null) return messages.errors.generic;
   if ("name" in error && error.name === "AuthRetryableFetchError") return messages.errors.network;

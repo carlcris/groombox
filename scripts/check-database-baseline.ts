@@ -7,6 +7,10 @@
 //   - the baseline's applied-migration list against the migration files
 // It also proves that a failed baseline installation leaves nothing behind. It never writes the
 // baseline: drift is reported for a person to fix in the affected definition.
+//
+// The bare Postgres image has only a stub storage schema; the storage service creates its tables
+// when it starts. So the storage schema is copied from the running local stack, without
+// GroomBox's own storage policies, into both disposable databases before anything is applied.
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -46,6 +50,23 @@ function readLocalPostgresImage(): string {
     throw new Error(`The local database container ${container} is not running. Run \`supabase start\` first.`);
   }
   return result.stdout.trim();
+}
+
+// The storage service's schema as the local stack has it, minus the policies GroomBox's
+// migrations add (the storage service defines none of its own).
+function readStorageServiceSchema(): string {
+  const dump = runDocker([
+    "exec", "--env", `PGPASSWORD=${databasePassword}`, `supabase_db_${readProjectId()}`,
+    "pg_dump", "-h", "127.0.0.1", "-U", "supabase_admin", "-d", "postgres", "--schema-only", "--schema=storage",
+  ]);
+  const kept: string[] = [];
+  let inPolicy = false;
+  for (const line of dump.split("\n")) {
+    if (line.startsWith("CREATE POLICY ")) inPolicy = true;
+    if (!inPolicy) kept.push(line);
+    if (inPolicy && line.trimEnd().endsWith(";")) inPolicy = false;
+  }
+  return `drop schema if exists storage cascade;\n${kept.join("\n")}`;
 }
 
 function readMigrationFiles(): MigrationFile[] {
@@ -90,11 +111,15 @@ class DisposableDatabase {
     throw new Error(`${this.container} did not become ready.`);
   }
 
-  // Runs SQL as the postgres role, as the Supabase CLI does for migrations.
-  runSql(sql: string, options: { singleTransaction: boolean }): { ok: boolean; output: string } {
+  // Runs SQL as the postgres role, as the Supabase CLI does for migrations, unless another role is
+  // named (the storage service schema is loaded as the superuser).
+  runSql(
+    sql: string,
+    options: { singleTransaction: boolean; role?: "postgres" | "supabase_admin" },
+  ): { ok: boolean; output: string } {
     const args = [
       "exec", "--interactive", "--env", `PGPASSWORD=${databasePassword}`, this.container,
-      "psql", "-h", "127.0.0.1", "-U", "postgres", "-d", "postgres", "-X", "-q", "-v", "ON_ERROR_STOP=1",
+      "psql", "-h", "127.0.0.1", "-U", options.role ?? "postgres", "-d", "postgres", "-X", "-q", "-v", "ON_ERROR_STOP=1",
     ];
     if (options.singleTransaction) args.push("--single-transaction");
     const result = spawnSync("docker", args, { encoding: "utf8", input: sql, maxBuffer: 64 * 1024 * 1024 });
@@ -158,15 +183,13 @@ function readBootstrapRecords(database: DisposableDatabase): string {
         "from pg_publication_tables where pubname = 'supabase_realtime'",
     ),
   ];
-  // The storage service and pg_cron create these tables; the bare image has them only once used.
-  if (database.query("select to_regclass('storage.buckets') is not null") === "t") {
-    sections.push(
-      database.query(
-        "select coalesce(jsonb_agg(jsonb_build_object('id', id, 'public', public, 'file_size_limit', file_size_limit, " +
-          "'allowed_mime_types', allowed_mime_types) order by id), '[]') from storage.buckets",
-      ),
-    );
-  }
+  sections.push(
+    database.query(
+      "select coalesce(jsonb_agg(jsonb_build_object('id', id, 'public', public, 'file_size_limit', file_size_limit, " +
+        "'allowed_mime_types', allowed_mime_types) order by id), '[]') from storage.buckets",
+    ),
+  );
+  // pg_cron creates cron.job only once the extension is enabled.
   if (database.query("select to_regclass('cron.job') is not null") === "t") {
     sections.push(
       database.query(
@@ -202,6 +225,12 @@ async function main(): Promise<void> {
     fromBaseline.start(image);
     await Promise.all([fromMigrations.waitUntilReady(), fromBaseline.waitUntilReady()]);
 
+    const storageServiceSchema = readStorageServiceSchema();
+    for (const database of [fromMigrations, fromBaseline]) {
+      const loaded = database.runSql(storageServiceSchema, { singleTransaction: true, role: "supabase_admin" });
+      if (!loaded.ok) throw new Error(`Loading the storage service schema failed:\n${loaded.output}`);
+    }
+
     for (const migration of migrations) {
       const applied = fromMigrations.runSql(readFileSync(migration.path, "utf8"), { singleTransaction: true });
       if (!applied.ok) throw new Error(`Migration ${migration.version}_${migration.name} failed:\n${applied.output}`);
@@ -213,7 +242,9 @@ async function main(): Promise<void> {
       "select (select count(*) from pg_namespace where nspname in ('private', 'supabase_migrations')) " +
         "+ (select count(*) from pg_class where relnamespace = 'public'::regnamespace) " +
         "+ (select count(*) from pg_type where typnamespace = 'public'::regnamespace) " +
-        "+ (select count(*) from pg_publication_tables where pubname = 'supabase_realtime')",
+        "+ (select count(*) from pg_publication_tables where pubname = 'supabase_realtime') " +
+        "+ (select count(*) from storage.buckets) " +
+        "+ (select count(*) from pg_policies where schemaname = 'storage')",
     );
     if (forcedFailure.ok) failures.push("The forced failure after the baseline did not fail.");
     if (leftovers !== "0") failures.push(`A failed baseline installation left ${leftovers} object(s) behind.`);

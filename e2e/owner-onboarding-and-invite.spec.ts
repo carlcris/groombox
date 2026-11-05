@@ -1,18 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { signIn, signUp, uniqueEmail } from "./account-steps";
 
 // Phase 1 exit criterion: an owner signs up, creates an organization and branch, and invites a
 // manager who joins.
-
-function uniqueEmail(role: string): string {
-  return `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@e2e.test`;
-}
-
-async function signUp(page: Page, fullName: string, email: string) {
-  await page.getByLabel("Your name").fill(fullName);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("groombox-e2e");
-  await page.getByRole("button", { name: "Create account" }).click();
-}
 
 test("an owner sets up a shop and a manager joins through an invite link", async ({ page, browser }) => {
   const businessName = `Lumen Spa ${test.info().project.name} ${Date.now()}`;
@@ -46,7 +36,7 @@ test("an owner sets up a shop and a manager joins through an invite link", async
 
   await expect(page).toHaveURL(/\/shop\/[0-9a-f-]+\/floor$/);
   await expect(page.getByRole("heading", { name: "Floor" })).toBeVisible();
-  await expect(page.getByRole("main").getByText("Poblacion")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Poblacion", { exact: true })).toBeVisible();
 
   await page.goto("/shop/team");
   await expect(page.getByText("Ana Owner")).toBeVisible();
@@ -70,7 +60,7 @@ test("an owner sets up a shop and a manager joins through an invite link", async
   await managerPage.getByRole("button", { name: `Join ${businessName}` }).click();
   await expect(managerPage).toHaveURL(/\/shop\/[0-9a-f-]+\/floor$/);
   await expect(managerPage.getByRole("heading", { name: "Floor" })).toBeVisible();
-  await expect(managerPage.getByRole("main").getByText("Poblacion")).toBeVisible();
+  await expect(managerPage.getByRole("main").getByText("Poblacion", { exact: true })).toBeVisible();
 
   // The same link cannot be used twice.
   await managerPage.goto(inviteLink);
@@ -85,20 +75,14 @@ test("an owner sets up a shop and a manager joins through an invite link", async
 });
 
 test("a manager cannot open the team page", async ({ page }) => {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").fill("manager@haven.test");
-  await page.getByLabel("Password").fill("groombox-local");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await signIn(page, "manager@haven.test");
   await expect(page).toHaveURL(/\/shop\/30000000-0000-0000-0000-000000000002\/floor$/);
   await page.goto("/shop/team");
   await expect(page).toHaveURL(/\/shop\/30000000-0000-0000-0000-000000000002\/floor$/);
 });
 
 test("members of a restricted organization see the notice", async ({ page }) => {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").fill("staff@kanto.test");
-  await page.getByLabel("Password").fill("groombox-local");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await signIn(page, "staff@kanto.test");
   await expect(page).toHaveURL(/\/shop\/restricted$/);
   await expect(page.getByRole("heading", { name: "This account is on hold" })).toBeVisible();
   await expect(page.getByText("Ask the owner to settle the account.", { exact: false })).toBeVisible();

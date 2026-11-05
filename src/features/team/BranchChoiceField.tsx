@@ -1,7 +1,6 @@
 import { fieldIds, firstFieldError } from "@/components/FormField";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import type { WorkBranch } from "@/features/organization/membership-queries";
 import { messages } from "@/lib/messages";
 
 export function BranchChoiceField({
@@ -12,7 +11,7 @@ export function BranchChoiceField({
   onChange,
 }: {
   id: string;
-  branches: WorkBranch[];
+  branches: { id: string; name: string }[];
   value: string[];
   errors: readonly unknown[];
   onChange: (branchIds: string[]) => void;

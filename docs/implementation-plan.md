@@ -68,7 +68,9 @@ Total: roughly 15–20 weeks. The earlier plan said 13–15; the difference come
 - Column grants that keep slugs, access status, and terms acceptance out of the owner's direct updates.
 - Onboarding checklist, publish and unpublish, and the screen rules that keep a published branch complete.
 - Audit triggers on the setup tables that take direct writes.
-- Storage buckets and policies. The baseline check's disposable databases come from the bare Postgres image, which has no storage service tables, so this phase also loads the storage schema into them before comparing buckets.
+- `create_branch`, `set_branch_hours`, and `save_staff_profile` for the setup writes that touch more than one row; the `branch_setup_status` view for the checklist.
+- Storage buckets `shop-media` and `payment-qr` with their policies. The baseline check's disposable databases come from the bare Postgres image, which has no storage service tables, so this phase also loads the storage schema into them before comparing buckets.
+- `npm run db:seed:images` uploads placeholder images to the storage paths the seed points at.
 
 **Exit criteria**
 - An owner takes a new organization from empty to a published branch using only the app.
@@ -84,6 +86,7 @@ Total: roughly 15–20 weeks. The earlier plan said 13–15; the difference come
 - Guest sessions with the bot check and Auth rate limits; client sign-in with Google and Facebook; in-app browser detection. Local tests use Turnstile test keys and seeded email users (TRD §14).
 - Booking status page through `get_booking_by_code`, and `claim_guest_booking`.
 - `expire_holds` job.
+- The branch setup screen's check that a branch has no upcoming bookings before it is deactivated.
 
 **Exit criteria**
 - A guest and a signed-in client can each hold a slot from a branch link on a phone.
@@ -97,7 +100,7 @@ This is the highest-risk phase. If it overruns, "any available" is the first cut
 ### Phase 4: deposits
 
 **Build**
-- `payment_proofs`; `submit_payment_proof`, `review_payment_proof`, `cancel_booking`, `record_refund_outcome`.
+- `payment_proofs`; `submit_payment_proof`, `review_payment_proof`, `cancel_booking`, `record_refund_outcome`; the `payment-proofs` bucket and its policies.
 - Pay and report-payment screens with countdown, copy buttons, and optional screenshot upload.
 - Deposit review list and sheet; live badge.
 - `expire_reviews` and `remind_pending_reviews` jobs and the needs-resolution state.
@@ -142,7 +145,7 @@ This is the highest-risk phase. If it overruns, "any available" is the first cut
 ### Phase 7: client area
 
 **Build**
-- Home, bookings list and detail, cancel, rebook, profile.
+- Home, bookings list and detail, cancel, rebook, profile; the `avatars` bucket and its policies.
 - Guest-to-account upgrade.
 - Directory: list, search, area and category filters, shop page. Built last in this phase.
 

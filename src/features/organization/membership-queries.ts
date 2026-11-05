@@ -22,6 +22,7 @@ export type WorkBranch = {
   name: string;
   slug: string;
   timezone: string;
+  businessDayStart: string;
 };
 
 // A person belongs to a handful of organizations and an organization has a handful of branches;
@@ -58,7 +59,7 @@ export function myBranchesQueryOptions(userId: string) {
     queryFn: async (): Promise<WorkBranch[]> => {
       const { data, error } = await supabase
         .from("my_branches")
-        .select("id, organization_id, name, slug, timezone")
+        .select("id, organization_id, name, slug, timezone, business_day_start")
         .order("name")
         .limit(branchLimit);
       if (error) throw error;
@@ -68,6 +69,7 @@ export function myBranchesQueryOptions(userId: string) {
         name: requireViewColumn(row.name, "name"),
         slug: requireViewColumn(row.slug, "slug"),
         timezone: requireViewColumn(row.timezone, "timezone"),
+        businessDayStart: requireViewColumn(row.business_day_start, "business_day_start").slice(0, 5),
       }));
     },
   });

@@ -186,7 +186,7 @@ In-app only. Database functions insert notification rows as part of the operatio
 
 ## 13. Environments
 
-- **Local**: Supabase CLI with Docker. All development and tests run here. GroomBox's local stack uses ports 56320–56329 (API on 56321, database on 56322, Studio on 56323, Mailpit on 56324), so it can run beside other local Supabase projects. `.env.local` holds the API URL and the publishable key from `supabase status -o env`; `.env.example` lists the variables.
+- **Local**: Supabase CLI with Docker. All development and tests run here. GroomBox's local stack uses ports 56320–56329 (API on 56321, database on 56322, Studio on 56323, Mailpit on 56324), so it can run beside other local Supabase projects. `.env.local` holds the API URL and the publishable key from `supabase status -o env`; `.env.example` lists the variables. After `supabase db reset`, `npm run db:seed:images` uploads placeholder images to the storage paths the seed data points at.
 - **Hosted**: one Supabase project and one static site for the pilot. Repository rules (`AGENTS.md`) forbid coding agents from running any command against a remote system, so the product owner applies migrations and deploys.
 - Environment variables in the app are limited to the Supabase URL and the public anon key.
 

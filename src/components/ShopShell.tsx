@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { Bell, LayoutList, LogOut, Menu, Users, type LucideIcon } from "lucide-react";
+import { Bell, LayoutList, LogOut, Menu, Settings, SlidersHorizontal, Users, type LucideIcon } from "lucide-react";
 import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { GroomBoxLogo } from "@/components/GroomBoxLogo";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,12 @@ type NavigationItem = {
   key: string;
   label: string;
   icon: LucideIcon;
-  link: { to: "/shop/$branchId/floor"; params: { branchId: string } } | { to: "/shop/team" | "/shop/notifications" };
+  link:
+    | { to: "/shop/$branchId/floor" | "/shop/$branchId/setup"; params: { branchId: string } }
+    | { to: "/shop/team" | "/shop/notifications" | "/shop/setup" };
   badge?: number;
+  // Phones show the main items in the bottom bar and the rest under More.
+  inBottomBar: boolean;
 };
 
 const linkClassName = cn(
@@ -58,10 +62,21 @@ export function ShopShell({
       label: messages.shop.floor,
       icon: LayoutList,
       link: { to: "/shop/$branchId/floor", params: { branchId: activeBranchId } },
+      inBottomBar: true,
+    });
+  }
+  if (isActive && activeBranchId && currentMembership.role !== "staff") {
+    items.push({
+      key: "branch-setup",
+      label: messages.shop.branchSetup,
+      icon: SlidersHorizontal,
+      link: { to: "/shop/$branchId/setup", params: { branchId: activeBranchId } },
+      inBottomBar: false,
     });
   }
   if (isActive && currentMembership.role === "owner") {
-    items.push({ key: "team", label: messages.shop.team, icon: Users, link: { to: "/shop/team" } });
+    items.push({ key: "setup", label: messages.shop.setup, icon: Settings, link: { to: "/shop/setup" }, inBottomBar: false });
+    items.push({ key: "team", label: messages.shop.team, icon: Users, link: { to: "/shop/team" }, inBottomBar: false });
   }
   items.push({
     key: "notifications",
@@ -69,6 +84,7 @@ export function ShopShell({
     icon: Bell,
     link: { to: "/shop/notifications" },
     badge: unreadCount,
+    inBottomBar: true,
   });
 
   async function signOut() {
@@ -114,7 +130,7 @@ export function ShopShell({
         className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-card pb-[env(safe-area-inset-bottom)] shadow-lg md:hidden"
       >
         {items
-          .filter((item) => item.key !== "team")
+          .filter((item) => item.inBottomBar)
           .map((item) => (
             <Link
               key={item.key}
@@ -144,7 +160,7 @@ export function ShopShell({
           <div className="flex flex-col gap-3 px-4">
             {switcher}
             {items
-              .filter((item) => item.key === "team")
+              .filter((item) => !item.inBottomBar)
               .map((item) => (
                 <Link key={item.key} {...item.link} className={linkClassName} onClick={() => setMoreOpen(false)}>
                   <item.icon className="size-6" aria-hidden />

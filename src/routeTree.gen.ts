@@ -19,8 +19,16 @@ import { Route as ShopIndexRouteImport } from './routes/shop/index'
 import { Route as ShopBranchIdRouteImport } from './routes/shop/$branchId'
 import { Route as ShopNotificationsRouteImport } from './routes/shop/notifications'
 import { Route as ShopRestrictedRouteImport } from './routes/shop/restricted'
+import { Route as ShopSetupRouteImport } from './routes/shop/setup'
 import { Route as ShopTeamRouteImport } from './routes/shop/team'
 import { Route as ShopBranchIdFloorRouteImport } from './routes/shop/$branchId/floor'
+import { Route as ShopBranchIdSetupRouteImport } from './routes/shop/$branchId/setup'
+import { Route as ShopSetupIndexRouteImport } from './routes/shop/setup/index'
+import { Route as ShopSetupBranchesRouteImport } from './routes/shop/setup/branches'
+import { Route as ShopSetupOrganizationRouteImport } from './routes/shop/setup/organization'
+import { Route as ShopSetupPoliciesRouteImport } from './routes/shop/setup/policies'
+import { Route as ShopSetupServicesRouteImport } from './routes/shop/setup/services'
+import { Route as ShopSetupStaffRouteImport } from './routes/shop/setup/staff'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -72,6 +80,11 @@ const ShopRestrictedRoute = ShopRestrictedRouteImport.update({
   path: '/restricted',
   getParentRoute: () => ShopRoute,
 } as any)
+const ShopSetupRoute = ShopSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => ShopRoute,
+} as any)
 const ShopTeamRoute = ShopTeamRouteImport.update({
   id: '/team',
   path: '/team',
@@ -81,6 +94,41 @@ const ShopBranchIdFloorRoute = ShopBranchIdFloorRouteImport.update({
   id: '/floor',
   path: '/floor',
   getParentRoute: () => ShopBranchIdRoute,
+} as any)
+const ShopBranchIdSetupRoute = ShopBranchIdSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => ShopBranchIdRoute,
+} as any)
+const ShopSetupIndexRoute = ShopSetupIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ShopSetupRoute,
+} as any)
+const ShopSetupBranchesRoute = ShopSetupBranchesRouteImport.update({
+  id: '/branches',
+  path: '/branches',
+  getParentRoute: () => ShopSetupRoute,
+} as any)
+const ShopSetupOrganizationRoute = ShopSetupOrganizationRouteImport.update({
+  id: '/organization',
+  path: '/organization',
+  getParentRoute: () => ShopSetupRoute,
+} as any)
+const ShopSetupPoliciesRoute = ShopSetupPoliciesRouteImport.update({
+  id: '/policies',
+  path: '/policies',
+  getParentRoute: () => ShopSetupRoute,
+} as any)
+const ShopSetupServicesRoute = ShopSetupServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => ShopSetupRoute,
+} as any)
+const ShopSetupStaffRoute = ShopSetupStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => ShopSetupRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -93,9 +141,17 @@ export interface FileRoutesByFullPath {
   '/shop/$branchId': typeof ShopBranchIdRouteWithChildren
   '/shop/notifications': typeof ShopNotificationsRoute
   '/shop/restricted': typeof ShopRestrictedRoute
+  '/shop/setup': typeof ShopSetupRouteWithChildren
   '/shop/team': typeof ShopTeamRoute
   '/shop/': typeof ShopIndexRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
+  '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
+  '/shop/setup/branches': typeof ShopSetupBranchesRoute
+  '/shop/setup/organization': typeof ShopSetupOrganizationRoute
+  '/shop/setup/policies': typeof ShopSetupPoliciesRoute
+  '/shop/setup/services': typeof ShopSetupServicesRoute
+  '/shop/setup/staff': typeof ShopSetupStaffRoute
+  '/shop/setup/': typeof ShopSetupIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -109,6 +165,13 @@ export interface FileRoutesByTo {
   '/shop/team': typeof ShopTeamRoute
   '/shop': typeof ShopIndexRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
+  '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
+  '/shop/setup/branches': typeof ShopSetupBranchesRoute
+  '/shop/setup/organization': typeof ShopSetupOrganizationRoute
+  '/shop/setup/policies': typeof ShopSetupPoliciesRoute
+  '/shop/setup/services': typeof ShopSetupServicesRoute
+  '/shop/setup/staff': typeof ShopSetupStaffRoute
+  '/shop/setup': typeof ShopSetupIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -121,9 +184,17 @@ export interface FileRoutesById {
   '/shop/$branchId': typeof ShopBranchIdRouteWithChildren
   '/shop/notifications': typeof ShopNotificationsRoute
   '/shop/restricted': typeof ShopRestrictedRoute
+  '/shop/setup': typeof ShopSetupRouteWithChildren
   '/shop/team': typeof ShopTeamRoute
   '/shop/': typeof ShopIndexRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
+  '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
+  '/shop/setup/branches': typeof ShopSetupBranchesRoute
+  '/shop/setup/organization': typeof ShopSetupOrganizationRoute
+  '/shop/setup/policies': typeof ShopSetupPoliciesRoute
+  '/shop/setup/services': typeof ShopSetupServicesRoute
+  '/shop/setup/staff': typeof ShopSetupStaffRoute
+  '/shop/setup/': typeof ShopSetupIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -137,9 +208,17 @@ export interface FileRouteTypes {
     | '/shop/$branchId'
     | '/shop/notifications'
     | '/shop/restricted'
+    | '/shop/setup'
     | '/shop/team'
     | '/shop/'
     | '/shop/$branchId/floor'
+    | '/shop/$branchId/setup'
+    | '/shop/setup/branches'
+    | '/shop/setup/organization'
+    | '/shop/setup/policies'
+    | '/shop/setup/services'
+    | '/shop/setup/staff'
+    | '/shop/setup/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -153,6 +232,13 @@ export interface FileRouteTypes {
     | '/shop/team'
     | '/shop'
     | '/shop/$branchId/floor'
+    | '/shop/$branchId/setup'
+    | '/shop/setup/branches'
+    | '/shop/setup/organization'
+    | '/shop/setup/policies'
+    | '/shop/setup/services'
+    | '/shop/setup/staff'
+    | '/shop/setup'
   id:
     | '__root__'
     | '/'
@@ -164,9 +250,17 @@ export interface FileRouteTypes {
     | '/shop/$branchId'
     | '/shop/notifications'
     | '/shop/restricted'
+    | '/shop/setup'
     | '/shop/team'
     | '/shop/'
     | '/shop/$branchId/floor'
+    | '/shop/$branchId/setup'
+    | '/shop/setup/branches'
+    | '/shop/setup/organization'
+    | '/shop/setup/policies'
+    | '/shop/setup/services'
+    | '/shop/setup/staff'
+    | '/shop/setup/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -250,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopRestrictedRouteImport
       parentRoute: typeof ShopRoute
     }
+    '/shop/setup': {
+      id: '/shop/setup'
+      path: '/setup'
+      fullPath: '/shop/setup'
+      preLoaderRoute: typeof ShopSetupRouteImport
+      parentRoute: typeof ShopRoute
+    }
     '/shop/team': {
       id: '/shop/team'
       path: '/team'
@@ -264,25 +365,99 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopBranchIdFloorRouteImport
       parentRoute: typeof ShopBranchIdRoute
     }
+    '/shop/$branchId/setup': {
+      id: '/shop/$branchId/setup'
+      path: '/setup'
+      fullPath: '/shop/$branchId/setup'
+      preLoaderRoute: typeof ShopBranchIdSetupRouteImport
+      parentRoute: typeof ShopBranchIdRoute
+    }
+    '/shop/setup/': {
+      id: '/shop/setup/'
+      path: '/'
+      fullPath: '/shop/setup/'
+      preLoaderRoute: typeof ShopSetupIndexRouteImport
+      parentRoute: typeof ShopSetupRoute
+    }
+    '/shop/setup/branches': {
+      id: '/shop/setup/branches'
+      path: '/branches'
+      fullPath: '/shop/setup/branches'
+      preLoaderRoute: typeof ShopSetupBranchesRouteImport
+      parentRoute: typeof ShopSetupRoute
+    }
+    '/shop/setup/organization': {
+      id: '/shop/setup/organization'
+      path: '/organization'
+      fullPath: '/shop/setup/organization'
+      preLoaderRoute: typeof ShopSetupOrganizationRouteImport
+      parentRoute: typeof ShopSetupRoute
+    }
+    '/shop/setup/policies': {
+      id: '/shop/setup/policies'
+      path: '/policies'
+      fullPath: '/shop/setup/policies'
+      preLoaderRoute: typeof ShopSetupPoliciesRouteImport
+      parentRoute: typeof ShopSetupRoute
+    }
+    '/shop/setup/services': {
+      id: '/shop/setup/services'
+      path: '/services'
+      fullPath: '/shop/setup/services'
+      preLoaderRoute: typeof ShopSetupServicesRouteImport
+      parentRoute: typeof ShopSetupRoute
+    }
+    '/shop/setup/staff': {
+      id: '/shop/setup/staff'
+      path: '/staff'
+      fullPath: '/shop/setup/staff'
+      preLoaderRoute: typeof ShopSetupStaffRouteImport
+      parentRoute: typeof ShopSetupRoute
+    }
   }
 }
 
 interface ShopBranchIdRouteChildren {
   ShopBranchIdFloorRoute: typeof ShopBranchIdFloorRoute
+  ShopBranchIdSetupRoute: typeof ShopBranchIdSetupRoute
 }
 
 const ShopBranchIdRouteChildren: ShopBranchIdRouteChildren = {
   ShopBranchIdFloorRoute: ShopBranchIdFloorRoute,
+  ShopBranchIdSetupRoute: ShopBranchIdSetupRoute,
 }
 
 const ShopBranchIdRouteWithChildren = ShopBranchIdRoute._addFileChildren(
   ShopBranchIdRouteChildren,
 )
 
+interface ShopSetupRouteChildren {
+  ShopSetupBranchesRoute: typeof ShopSetupBranchesRoute
+  ShopSetupOrganizationRoute: typeof ShopSetupOrganizationRoute
+  ShopSetupPoliciesRoute: typeof ShopSetupPoliciesRoute
+  ShopSetupServicesRoute: typeof ShopSetupServicesRoute
+  ShopSetupStaffRoute: typeof ShopSetupStaffRoute
+  ShopSetupIndexRoute: typeof ShopSetupIndexRoute
+}
+
+const ShopSetupRouteChildren: ShopSetupRouteChildren = {
+  ShopSetupBranchesRoute: ShopSetupBranchesRoute,
+  ShopSetupOrganizationRoute: ShopSetupOrganizationRoute,
+  ShopSetupPoliciesRoute: ShopSetupPoliciesRoute,
+  ShopSetupServicesRoute: ShopSetupServicesRoute,
+  ShopSetupStaffRoute: ShopSetupStaffRoute,
+  ShopSetupIndexRoute: ShopSetupIndexRoute,
+}
+
+const ShopSetupRouteWithChildren = ShopSetupRoute._addFileChildren(
+  ShopSetupRouteChildren,
+)
+
 interface ShopRouteChildren {
   ShopBranchIdRoute: typeof ShopBranchIdRouteWithChildren
   ShopNotificationsRoute: typeof ShopNotificationsRoute
   ShopRestrictedRoute: typeof ShopRestrictedRoute
+  ShopSetupRoute: typeof ShopSetupRouteWithChildren
   ShopTeamRoute: typeof ShopTeamRoute
   ShopIndexRoute: typeof ShopIndexRoute
 }
@@ -291,6 +466,7 @@ const ShopRouteChildren: ShopRouteChildren = {
   ShopBranchIdRoute: ShopBranchIdRouteWithChildren,
   ShopNotificationsRoute: ShopNotificationsRoute,
   ShopRestrictedRoute: ShopRestrictedRoute,
+  ShopSetupRoute: ShopSetupRouteWithChildren,
   ShopTeamRoute: ShopTeamRoute,
   ShopIndexRoute: ShopIndexRoute,
 }

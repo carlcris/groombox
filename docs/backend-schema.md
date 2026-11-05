@@ -238,7 +238,7 @@ Index on `(user_id, organization_id)` where `is_active`, to support policy looku
 
 ### `staff_shifts`
 
-`id`, `organization_id`, `staff_id`, `branch_id`, `day_of_week`, `starts_at time`, `ends_at time`, `ends_next_day boolean` (default false). Index on `(branch_id, day_of_week)`. A shift past midnight follows the same rule as branch hours: it belongs to the day it starts, starts at or after the branch's `business_day_start`, and ends by it.
+`id`, `organization_id`, `staff_id`, `branch_id`, `day_of_week`, `starts_at time`, `ends_at time`, `ends_next_day boolean` (default false). Index on `(branch_id, day_of_week)`. `(staff_id, branch_id)` references `staff_branches` with cascade, so a shift exists only at a branch the staff member is assigned to. A shift past midnight follows the same rule as branch hours: it belongs to the day it starts, starts at or after the branch's `business_day_start`, and ends by it.
 
 ### `staff_time_off`
 
@@ -469,6 +469,7 @@ A branch's **deposit reviewers** are the owner, the managers assigned to the bra
 | `platform_billing_details` | Owners of any organization, whatever its access status | `payment_instructions` from `platform_settings`, so owners know how to pay GroomBox |
 | `my_memberships` | The signed-in user | Own active memberships: member id, organization id, name, slug, and access status, role, deposit-review permission. Runs with the view owner's rights so a member of a restricted organization still learns it is restricted; returns only the caller's rows |
 | `my_branches` | The signed-in user | Active branches the caller works in: all of an owner's, the assigned ones for managers and staff |
+| `branch_setup_status` | Members | Per active branch: published flag, whether the address is complete, open days, offered active services, bookable active staff with a shift, complete payment details, and terms accepted. The setup screens read it for the publishing checklist and to refuse removing a published branch's last required item |
 
 Views run with the caller's rights (`security_invoker`) unless they must expose columns from tables the caller cannot read, in which case they select only public columns.
 
@@ -477,7 +478,10 @@ Views run with the caller's rights (`security_invoker`) unless they must expose 
 | Function | Caller | What it does |
 |---|---|---|
 | `create_organization` | Signed-in user | Creates the organization, the owner membership, and the first branch |
-| `create_invite`, `accept_invite` | Owner; invitee | Creates a single-use invite; adds the membership and branch assignments |
+| `create_invite`, `accept_invite` | Owner; invitee | Creates a single-use invite, optionally naming a staff profile; adds the membership and branch assignments and links the named staff profile to the new login |
+| `create_branch` | Owner | Adds a branch with its weekly hours and a free slug |
+| `set_branch_hours` | Owner; manager of the branch | Replaces the branch's weekly hours in one step |
+| `save_staff_profile` | Owner | Creates or updates a staff profile with its branches, services, and commission overrides in one step. Leaving a branch removes the staff member's shifts there |
 | `get_invite_preview` | Anyone holding the code | For an unaccepted, unexpired invite: organization name, role, branch names, and expiry |
 | `update_member`, `remove_member` | Owner | Changes a member's role, branch assignments, and deposit-review permission; or deactivates the membership and clears its branch assignments. The owner membership cannot be changed or removed |
 | `accept_terms` | Owner | Sets `terms_accepted_at` and `terms_accepted_by` to the caller |
