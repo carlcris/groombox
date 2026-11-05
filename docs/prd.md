@@ -1,6 +1,6 @@
 # GroomBox: product requirements (PRD)
 
-Last updated: 2026-10-09
+Last updated: 2026-11-05
 Related: [technical requirements](trd.md), [app flow](app-flow.md), [design brief](design-brief.md), [backend schema](backend-schema.md), [implementation plan](implementation-plan.md)
 
 ## 1. Summary
@@ -39,9 +39,9 @@ GroomBox is a booking and shop-management web app for salons, barbershops, and s
 |---|---|---|
 | Guest | A client booking from a shop's link without an account | Their own bookings in that browser |
 | Client | A signed-in client (Google or Facebook) | Own profile, own bookings across all shops, the shop directory |
-| Staff | A stylist, barber, or therapist with a login | Own schedule; floor view of assigned branches |
-| Manager | Front desk or branch manager | Everything at assigned branches, including deposit review and the daily close |
-| Owner | The business owner | Everything in the organization, across all branches |
+| Staff | A stylist, barber, or therapist with a login | Floor work at assigned branches: walk-ins, appointments, check-in through checkout; deposit review only if the owner permits |
+| Manager | Front desk or branch manager | At assigned branches: floor work, deposit review, the daily close, and branch-level setup (hours, closures, photos, service offerings and price overrides, staff shifts and time off) |
+| Owner | The business owner | Everything in the organization, across all branches. Only the owner edits the service catalogue, staff profiles, commission, policies, team, billing, and branch payment details |
 | Platform admin | GroomBox | Fee settings, statements, organization access |
 
 A bookable staff member does not need a login. Staff who only appear on the calendar are profiles managed by the owner or a manager.
@@ -52,6 +52,7 @@ A bookable staff member does not need a login. Staff who only appear on the cale
 - Service catalogue, client records, commission rules, and fee statements belong to the organization.
 - Hours, booking link, deposit payment details, staff schedules, bookings, queue, checkout, and daily close belong to the branch.
 - A client account is platform-wide. Each organization keeps its own private client record (notes, history) linked to it.
+- Each organization has one category, used for directory filters: salon, barbershop, spa, nails, lashes and brows, or other. The launch segment is salons, barbershops, and spas.
 
 ## 7. Functional requirements
 
@@ -82,6 +83,7 @@ Priority: **M** = must have for the pilot, **S** = should have, **C** = could mo
 | SET-7 | Hold time and review time for deposits, and cancellation policy text | M |
 | SET-8 | Commission: default percentage per staff member, optional override per staff and service | M |
 | SET-9 | An organization can opt out of the directory | M |
+| SET-10 | An owner publishes a branch only when it has an address, city, and area; operating hours; at least one offered service; at least one bookable staff member with a shift there; complete payment details with a QR image; and the owner has accepted the terms. While published, the branch cannot lose the last of these items until it is unpublished | M |
 
 ### 7.3 Booking
 
@@ -136,7 +138,8 @@ Priority: **M** = must have for the pilot, **S** = should have, **C** = could mo
 | ID | Requirement | Priority |
 |---|---|---|
 | CLI-1 | Client list per organization with search, visit history, and notes | M |
-| CLI-2 | A guest or walk-in creates a client record automatically; staff can merge duplicates | S |
+| CLI-2 | A guest or walk-in creates a client record automatically; owners and managers can merge duplicates | S |
+| CLI-3 | Staff adding a walk-in or appointment can search existing clients by name or mobile number, without seeing notes or history | M |
 
 ### 7.8 Client area
 

@@ -1,6 +1,6 @@
 # GroomBox: app flow
 
-Last updated: 2026-10-09
+Last updated: 2026-11-05
 Related: [product requirements](prd.md), [technical requirements](trd.md), [design brief](design-brief.md), [backend schema](backend-schema.md)
 
 ## 1. Entry points
@@ -11,10 +11,10 @@ Related: [product requirements](prd.md), [technical requirements](trd.md), [desi
 | Guest or client | An organization link | Organization page listing branches |
 | Client | Opening GroomBox directly | Client home (sign-in if needed) |
 | Member | Opening GroomBox directly | Floor view of their branch |
-| Owner | First visit | Sign-up, then organization setup |
+| Owner | First visit | Sign-up, then `/onboarding` |
 | Platform admin | Opening GroomBox directly | Admin statements list |
 
-After sign-in, a user with both a client profile and a membership lands on the shop side and can switch to the client area from the account menu.
+After sign-in, a user with both a client profile and a membership lands on the shop side and can switch to the client area from the account menu. A member of more than one organization switches organization from the same menu (ACC-5).
 
 ## 2. Route map
 
@@ -25,17 +25,17 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/b/:branchSlug` | Branch page: services, staff, hours, book button |
 | `/b/:branchSlug/book` | Booking flow (steps below) |
 | `/o/:orgSlug` | Organization page: branches |
-| `/booking/:bookingCode` | Booking status, payment details, report payment |
+| `/booking/:bookingCode` | Booking status, payment details, report payment. Also the booking detail for signed-in clients |
 | `/sign-in`, `/sign-up` | Sign-in for clients and members; owner sign-up |
 | `/invite/:code` | Accept a member invite |
+| `/onboarding` | Owner's first organization and branch setup (signed-in owner with no organization) |
 
 ### Client area (signed-in client)
 
 | Route | Screen |
 |---|---|
 | `/home` | Upcoming bookings, quick rebook |
-| `/bookings` | Upcoming and past bookings |
-| `/bookings/:bookingCode` | Booking detail |
+| `/bookings` | Upcoming and past bookings; each opens `/booking/:bookingCode` |
 | `/explore` | Shop directory with search and filters |
 | `/explore/:branchSlug` | Shop page inside the directory |
 | `/profile` | Own profile |
@@ -50,10 +50,13 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/shop/:branchId/deposits` | Deposits to review | Owner, manager, permitted staff |
 | `/shop/:branchId/visit/:bookingId` | Visit detail and checkout | All |
 | `/shop/:branchId/close` | Daily close | Owner, manager |
+| `/shop/:branchId/setup` | Branch hours, closures, photos, service offerings and price overrides, staff shifts and time off | Owner, manager |
 | `/shop/clients` | Client list and detail | Owner, manager |
-| `/shop/setup/services` | Service catalogue | Owner, manager |
-| `/shop/setup/staff` | Staff, shifts, commission | Owner, manager |
-| `/shop/setup/branches` | Branches, hours, payment details | Owner |
+| `/shop/notifications` | Notification list | All |
+| `/shop/setup/organization` | Organization name, logo, and category | Owner |
+| `/shop/setup/services` | Service catalogue | Owner |
+| `/shop/setup/staff` | Staff profiles, branch and service assignments, commission | Owner |
+| `/shop/setup/branches` | Branches, address, payment details, publish and unpublish | Owner |
 | `/shop/setup/policies` | Deposit rule, hold and review times, cancellation policy, directory listing | Owner |
 | `/shop/team` | Members and invites | Owner |
 | `/shop/billing` | Fee statements and how to pay | Owner |
@@ -73,7 +76,7 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | Surface | Phone | Tablet and desktop |
 |---|---|---|
 | Client area | Bottom bar: Home, Explore, Bookings, Profile | Top bar with the same items |
-| Shop side | Bottom bar: Floor, Calendar, Deposits, Clients, More | Left sidebar; branch switcher at the top |
+| Shop side | Bottom bar: Floor, Calendar, Deposits (deposit reviewers only), Clients (owner and manager only), More | Left sidebar with the same role rules; branch switcher at the top |
 | Booking flow | Step header with back; one sticky primary button at the bottom | Same, centred in a narrow column |
 | Admin | Top bar | Left sidebar |
 
@@ -152,13 +155,13 @@ The convenience fee entry is created on the move to `confirmed` from a deposit r
 1. A badge on "Deposits" shows the number waiting. Bookings flagged for resolution sort first.
 2. The reviewer opens one: client, services, time, amount due, and the reported reference number, amount, method, and screenshot.
 3. The reviewer checks the shop's e-wallet outside GroomBox.
-4. They choose **Accept**, **Ask to resubmit** (with a note), or **Reject** (with a reason).
+4. They choose **Accept**, **Ask to resubmit** (with a note), or **Reject** (with a reason). A booking flagged for resolution offers only **Accept** or **Reject**, following the state diagram.
 5. The client's booking page updates live and a notification is created.
 
 ## 7. Flow: walk-in
 
 1. On the floor view, tap "Add walk-in".
-2. Enter a name (mobile number optional), pick services, and optionally a staff member.
+2. Search for an existing client by name or mobile number, or enter a new name (mobile number optional). Pick services, and optionally a staff member.
 3. The visit joins the queue as `waiting` with a queue number.
 4. When a chair is free, tap "Start" and confirm the staff member; the visit becomes `in_service` and takes a slot on the calendar from now.
 
@@ -174,7 +177,7 @@ The convenience fee entry is created on the move to `confirmed` from a deposit r
 ## 9. Flow: daily close
 
 1. Open "Close" for the branch. The business date defaults to today.
-2. The screen lists unfinished visits; each must be completed, cancelled, or marked no-show first.
+2. The screen lists the day's unfinished visits (waiting, confirmed, checked in, in service); each must be completed, cancelled, or marked no-show first. Bookings still waiting on a deposit decision do not block the close and stay in the deposits list.
 3. Review totals: sales by payment method, deposits received today, discounts, tips, and commission and tips per staff member.
 4. Enter the counted cash. The difference from expected cash is shown.
 5. Tap "Close day". The day locks. The owner can reopen it.
@@ -182,21 +185,23 @@ The convenience fee entry is created on the move to `confirmed` from a deposit r
 ## 10. Flow: owner onboarding
 
 1. Sign up, then name the organization and choose its category.
-2. Add the first branch: name, address, area, hours.
+2. Add the first branch: name, address, city, area, hours.
 3. Add deposit payment details and a QR image.
-4. Add services, or start from a template for the chosen category.
+4. Add services.
 5. Add staff and their shifts.
 6. Set the deposit rule and cancellation policy; defaults are prefilled.
 7. Accept the terms, which include the fee rules and directory listing.
 8. Publish. The screen shows the booking link and a printable QR code.
 
-A checklist on the floor view shows any step skipped. A branch cannot be published without hours, at least one service, one bookable staff member with a shift, and payment details.
+Steps 1 and 2 are saved together by `create_organization`. A checklist on the floor view shows any step skipped. The Publish button stays disabled until the branch has its address, city, and area; hours; at least one offered service; one bookable staff member with a shift; payment details with a QR image; and accepted terms (SET-10). While the branch is published, setup screens refuse to remove the last of any of these and ask the owner to unpublish first.
+
+Unpublishing stops new online bookings; the branch page shows "This shop is not taking online bookings", and existing bookings carry on and stay reachable by their code. Deactivating a branch (ACC-2) needs the branch unpublished and no upcoming bookings.
 
 ## 11. Flow: inviting a member
 
 1. The owner opens "Team", chooses a role and branches, and creates an invite link.
 2. The owner sends the link through their own chat app.
-3. The invitee opens it, signs in or signs up, and joins.
+3. The invitee opens it and sees the organization, role, and branches before signing in. They sign in or sign up, and join.
 4. If the member is also a bookable staff profile, the owner links the two.
 
 ## 12. Flow: fee billing

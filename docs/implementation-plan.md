@@ -1,6 +1,6 @@
 # GroomBox: implementation plan
 
-Last updated: 2026-10-09
+Last updated: 2026-11-05
 Related: [product requirements](prd.md), [technical requirements](trd.md), [app flow](app-flow.md), [design brief](design-brief.md), [backend schema](backend-schema.md)
 
 Estimates are rough, for one person building with Claude. They are not commitments.
@@ -34,11 +34,11 @@ The last two are needed by phase 3, not phase 1.
 | 4 | Deposits | 1–2 weeks | 3 |
 | 5 | Floor and calendar | 2 weeks | 3 |
 | 6 | Checkout and daily close | 2 weeks | 5 |
-| 7 | Client area | 1 week, plus 1 for the directory | 3 |
+| 7 | Client area | 1 week, plus 1 for the directory | 3, 4 |
 | 8 | Fee billing and restriction | 1–2 weeks | 4 |
 | 9 | Pilot readiness | 2 weeks | All |
 
-Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference comes from splitting shop setup out of the foundation, the proof-of-payment review flow, notifications, and honest allowances for testing.
+Total: roughly 15–20 weeks. The earlier plan said 13–15; the difference comes from splitting shop setup out of the foundation, the proof-of-payment review flow, notifications, and honest allowances for testing.
 
 ### Phase 1: foundation and tenancy
 
@@ -48,7 +48,7 @@ Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference come
 - Tables: `profiles`, `platform_admins`, `platform_settings`, `organizations`, `branches`, `organization_members`, `member_branches`, `organization_invites`, `activity_logs`, `notifications`.
 - Row-level rules and the membership lookup, including the restricted-organization rule.
 - Sign-up and sign-in for owners and members; route guards per audience.
-- `create_organization`, invites, team screen, branch switcher.
+- `create_organization`; invites with `get_invite_preview`; team screen with `update_member` and `remove_member`; branch switcher.
 - App shell for the shop side: navigation, notification list, offline banner, version check.
 - Playwright and pgTAP harness with seed data.
 
@@ -63,13 +63,16 @@ Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference come
 - Categories, services, branch offerings and price overrides.
 - Staff, branch and service assignments, shifts, time off, commission rates.
 - Branch hours, closures, photos, payment details and QR upload.
-- Deposit rule, hold and review times, cancellation policy, directory listing switch.
-- Onboarding checklist and the publish rule.
+- Deposit rule, hold and review times, cancellation policy, directory listing switch; terms acceptance through `accept_terms`.
+- Column grants that keep slugs, access status, and terms acceptance out of the owner's direct updates.
+- Onboarding checklist, publish and unpublish, and the screen rules that keep a published branch complete.
+- Audit triggers on the setup tables that take direct writes.
 - Storage buckets and policies.
 
 **Exit criteria**
 - An owner takes a new organization from empty to a published branch using only the app.
-- A branch cannot be published while a required item is missing.
+- The setup screen will not publish a branch while a required item is missing, or remove the last required item from a published branch.
+- A manager can change their own branch's hours, offerings, and shifts, but not the catalogue, commission, payment details, or another branch.
 
 ### Phase 3: booking engine and public booking
 
@@ -87,7 +90,7 @@ Total: roughly 15–19 weeks. The earlier plan said 13–15; the difference come
 - Availability is correct across shifts, time off, closures, buffers, and existing bookings, including a booking that crosses midnight in the branch's time zone.
 - The availability query meets the performance target in the TRD, measured as an authenticated role.
 
-This is the highest-risk phase. If it overruns, cut "any available" first.
+This is the highest-risk phase. If it overruns, "any available" is the first cut within this phase (the directory, cut first overall in section 5, belongs to phase 7).
 
 ### Phase 4: deposits
 
@@ -109,15 +112,16 @@ This is the highest-risk phase. If it overruns, cut "any available" first.
 
 **Build**
 - Floor view with live updates; tabs on phones, columns on tablets.
-- Walk-ins and queue numbers; staff-entered appointments; reschedule.
+- Walk-ins and queue numbers; staff-entered appointments; reschedule; `search_clients` for finding existing clients.
 - Check-in, start, no-show.
 - Day and week calendar.
-- Client list and detail with history and notes.
+- Client list and detail with history and notes; `merge_clients`.
 
 **Exit criteria**
 - Two devices on the same branch stay in sync without a manual refresh.
 - A walk-in goes from queue to in service and takes a calendar slot.
 - A staff-entered appointment has no deposit and no fee.
+- A staff member finds an existing client from the walk-in sheet and never sees client notes.
 
 ### Phase 6: checkout and daily close
 
@@ -184,7 +188,7 @@ If the schedule is tight, ship this phase without the directory and add it after
 | Row-level rules | pgTAP for every new table, including the restricted and guest cases |
 | Lists | Server-side filtering, sorting, and pagination |
 | States | Loading, empty, error, and offline for every screen |
-| Docs | Update `docs/kb` and `docs/guides` when behaviour, rules, or schema change |
+| Docs | Update the planning documents in `docs/` (including `backend-schema.md`) and, from phase 9, `docs/guides` when behaviour, rules, or schema change |
 | Cleanup | Remove anything a change makes obsolete, in the same change |
 
 ## 5. Order of cuts if time runs short

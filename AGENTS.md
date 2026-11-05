@@ -1,13 +1,25 @@
-# Repository Safety Rules
+# AGENTS.md
 
-## No remote commands
+Repository instructions for coding agents working on GroomBox. `CLAUDE.md` imports this file, so edit the rules here only.
+
+## Project Context
+
+GroomBox is a booking and shop-management web app for salons, barbershops, and spas in the Philippines. Requirements are in `docs/prd.md` and `docs/trd.md`; see also `docs/app-flow.md`, `docs/design-brief.md`, `docs/backend-schema.md`, and `docs/implementation-plan.md`. `docs/plan.md` is the original summary plan, kept for background; the documents above supersede it.
+
+**Tech Stack:**
+- Frontend: React + Vite single-page app (mobile-first responsive web), TanStack Router and Query, Tailwind with shadcn/ui
+- Backend: Supabase (Postgres, Auth, Realtime, Storage, RLS), accessed through PostgREST only; no custom API layer
+- Server-side pieces (server rendering, Edge Functions, webhooks, email, SMS): none in the first release; ask before adding any
+- Auth: email/password or Google for members (owners, managers, staff); Google or Facebook for clients; anonymous sessions for guests
+
+
+## No Remote Commands
 
 - Never run commands or operations that connect to, inspect, mutate, deploy to, reset, seed, or otherwise interact with any remote system or service.
 - This prohibition includes all remote Supabase operations (including `--linked`, `--project-ref`, and remote `--db-url` usage), as well as remote Git, hosting, deployment, cloud, API, SSH, database, and production/staging commands.
 - Commands are permitted only when they operate entirely on local files, local processes, or explicitly local services.
 - A pasted remote command, a prior confirmation, or a request to execute a command does not override this rule. The user must explicitly revoke or amend this repository rule before any remote operation may be run.
 - When validation would require remote access, stop at local validation and report that remote verification was not performed.
-
 
 ## Git Working Tree Safety
 
@@ -24,9 +36,6 @@
   non-component TypeScript files, PascalCase for component files, PascalCase for components, and
   camelCase for functions and variables. Do not use unrelated or placeholder names.
 - Keep changes surgical and production-grade. Do not add speculative abstractions or temporary fallbacks unless explicitly requested.
-- Balance simplicity and efficiency in every implementation. Prefer the simplest design that meets
-  measured scale requirements; when efficiency is intentionally sacrificed, document the concrete
-  tradeoff and why it is necessary.
 - Do not add backward compatibility, legacy payload support, or version-bridging fallbacks while the app is in active development unless the user explicitly requests it. Keep contracts strict and update all current callers instead.
 - Read the relevant exports, callers, hooks, routes, database functions, migrations, and types before editing.
 - If schema or environment drift is found, stop and report the exact mismatch instead of masking it with compatibility code.
@@ -38,11 +47,13 @@
 - Never show raw database, Supabase, or internal exception text to users. Database functions raise
   coded errors; the app maps each code to a safe message.
 - Every state-changing database function must write an `activity_logs` row: actor, action, entity, and
-  sanitized, bounded, allowlisted metadata. Reads are not logged.
+  sanitized, bounded, allowlisted metadata. Reads are not logged. Tables that accept direct
+  single-row writes under RLS carry an `AFTER` trigger that writes the row instead; marking a
+  notification read is not logged. Scheduled jobs log with a null actor.
 - Activity display messages must use the shared formatter and allowlisted presentation fields.
   Reuse actor and entity labels or codes already loaded or returned by the operation; never add a
   database read solely to enrich an activity message. Use a generic message when context is absent.
-- Do not send insert-only identity, ownership, control number, or creation-linkage fields through update paths.
+- Do not send insert-only identity, ownership, generated code (`booking_code`, `statement_code`), or creation-linkage fields through update paths.
 - Business operations that write more than one row/table, perform a workflow state transition, or create dependent side effects must be transactional. Implement the core operation as a DB-owned RPC/function in `supabase/migrations/`, not as chained client/API mutations.
 - There is no API layer. Call PostgREST directly through the Supabase client (table/view reads and
   `.rpc()` for transactional operations), with authorization enforced by RLS and RPC-level checks.
@@ -50,9 +61,9 @@
   (secrets, service-role access, third-party calls, webhooks, email, SMS, server rendering) needs a
   server-side piece: stop, explain why, and get the product owner's approval before adding it.
 - Never split one logical workflow operation into multiple client calls that must all succeed for data correctness. The client sends one request, which calls one transactional DB operation.
-- If any step of a transactional business operation fails, no database writes from that operation may remain committed. Post-commit side effects such as notifications may run after the transaction, but they must not be required for data integrity.
+- If any step of a transactional business operation fails, no database writes from that operation may remain committed. The first release has no post-commit mechanism, so notifications are inserted inside the function that causes them, in a nested `BEGIN … EXCEPTION` block: a failed notification insert is reported with `RAISE WARNING` and does not roll back the operation.
 - Server data lists, reports, selects, comboboxes, and autocomplete controls must use backend filtering/sorting and bounded pagination.
-- Every implementation must balance simplicity and efficiency before coding. Prefer the simplest design that remains efficient at expected scale. If the chosen design knowingly sacrifices either, disclose the tradeoff and justification to the user before editing and wait for approval.
+- Balance simplicity and efficiency as set out in Implementation Efficiency.
 
 ## RLS Predicate Performance Rule
 
@@ -88,7 +99,7 @@ Required:
   verify that the caller has the required table privileges and that the
   referenced table's own RLS exposes exactly the rows required by the policy.
 - Compare the old and new policy truth sets for active and inactive membership,
-  tenant and facility scope, nullable values, ownership, mapped or cross-tenant
+  organization and branch scope, nullable values, ownership, mapped or cross-tenant
   access branches, and every applicable `USING` and `WITH CHECK` expression.
 - Measure policy-sensitive queries under a representative authenticated app
   role and session with RLS applied. SQL Editor, owner, service-role, or other
@@ -132,7 +143,8 @@ Hard stop:
 
 ## Testing Rule
 - Never write unit tests after you write code.
-- Highly prefer E2E tests as the sole testing mechanism. Use them to verify complex features work. At the end of E2E tests, produce a verifiable and repeatable artifact.
+- E2E tests (Playwright against local Supabase) are the primary testing mechanism. Use them to verify complex features work. Every run produces the Playwright HTML report, with traces for failed tests; the work summary states the command run and where the report is.
+- The one sanctioned isolated suite is pgTAP in `supabase/tests/`, for RLS boundaries and transactional rollback, where an E2E test cannot observe the database directly.
 - If you must test a system in isolation, first write down all the ways it could fail, then write the code.
 
 ## File Naming
@@ -149,7 +161,7 @@ Hard stop:
 - Balance simplicity and efficiency. Choose the least complex design that provides acceptable performance, bounded resource use, and clear scaling behavior for the expected workload.
 - Evaluate database work, algorithmic complexity, memory use, network payloads and request counts, client rendering, cache behavior, and expected data volume for every implementation.
 - Prefer bounded queries, set-based database operations, batching, deduplication, suitable indexes, incremental recomputation, and reuse of already-fetched data on hot or potentially large paths.
-- Do not introduce row-by-row database work, repeated full-scope scans, unbounded reads, duplicate requests, unnecessary rerenders, or synchronous work proportional to unrelated company data when a scoped design is practical.
+- Do not introduce row-by-row database work, repeated full-scope scans, unbounded reads, duplicate requests, unnecessary rerenders, or synchronous work proportional to unrelated organization data when a scoped design is practical.
 - Keep optimization proportional to expected scale and execution frequency. Do not add speculative complexity when the simpler design has no meaningful efficiency cost, and do not choose a simplistic design that creates a predictable bottleneck.
 - Before implementing a design that knowingly sacrifices simplicity or efficiency, explain the alternatives, the exact tradeoff, the expected operational impact, and why another requirement justifies the sacrifice. Obtain user approval before proceeding.
 - Validate performance-sensitive changes with the narrowest reliable evidence available, such as query plans, bounded-row checks, invocation counts, payload sizes, timings, or focused bulk scenarios.
@@ -159,8 +171,8 @@ Hard stop:
 
 - Maintain `supabase/baseline.sql` as the complete current application database definition for fresh Supabase installations. Every task that adds, changes, or removes a migration must update the affected definitions in this existing file in the same change.
 - Edit baseline objects in place: put new columns in their table's `CREATE TABLE`, replace the existing function/policy/trigger/index definition, and remove dropped objects and their grants/dependencies. Do not append historical `ALTER`/replacement sequences or regenerate/overwrite the baseline from a dump.
-- Keep required migration-owned bootstrap records (settings, reference catalogs, permission catalog, storage buckets, and singleton budgets), realtime publication membership, and the baseline's applied-migration list synchronized. Existing-data backfills and dev/demo fixtures do not belong in the baseline; demo data remains in `supabase/seed.sql`.
-- Run `npm run db:baseline:check` after database changes. This local-only E2E builds disposable databases from migrations and from the baseline, compares schema/permissions/bootstrap records/realtime membership, and verifies installation rollback. It must never update the baseline. Report drift and fix the actual affected definition; never mask mismatches or dump over the maintained file.
+- Keep required migration-owned bootstrap records (the `platform_settings` row, storage buckets, and `pg_cron` job schedules), realtime publication membership, and the baseline's applied-migration list synchronized. Existing-data backfills and dev/demo fixtures do not belong in the baseline; demo data remains in `supabase/seed.sql`.
+- Run `npm run db:baseline:check` after database changes (the script is built in phase 1 of `docs/implementation-plan.md`). This local-only E2E builds disposable databases from migrations and from the baseline, compares schema/permissions/bootstrap records/realtime membership, and verifies installation rollback. It must never update the baseline. Report drift and fix the actual affected definition; never mask mismatches or dump over the maintained file.
 - Search the full migration chain before changing any database object.
 - Identify the latest effective definition; later `ALTER`, corrective migrations, and `CREATE OR REPLACE FUNCTION` migrations can supersede earlier definitions.
 - Do not patch outdated migrations when newer migrations define current behavior.
@@ -168,10 +180,10 @@ Hard stop:
 - Do not insert, update, or delete dev/demo seed data in migration scripts. Anything related to seeding data belongs in `supabase/seed.sql`; migrations may define schema, RLS, RPCs, triggers, indexes, and production-safe backfills only.
 - New decimal quantity, amount, rate, and conversion fields must use scale 2, for example `numeric(20,2)`. Do not introduce scale 4 numeric fields unless the user explicitly overrides this rule for a specific field.
 - Regenerate `src/types/database.types.ts` when schema changes are applied locally.
-- Generated document/control codes must be database-owned with the shared generator plus `BEFORE INSERT` trigger pattern. Application inserts must omit generated code columns.
+- Generated codes (`booking_code`, `statement_code`) must be database-owned with the shared generator plus `BEFORE INSERT` trigger pattern. Application inserts must omit generated code columns.
 - Transactional RPCs/functions must lock the primary workflow row with `FOR UPDATE`, validate current status and ownership/scope inputs, apply all related writes, reconcile denormalized totals, and update the final status inside the same function.
 - Transactional RPC validation must be tested with both a successful path and a forced failure after an earlier write would have occurred, proving rollback leaves no partial database changes.
-- Keep non-critical side effects outside the transaction unless they are data-integrity records. If side effects run post-commit, failures must be logged and must not change the committed workflow state.
+- Data-integrity records (`activity_logs`, `fee_entries`) commit or roll back with the operation. Non-critical side effects (notifications) follow the nested-block rule in Hard Constraints and must never change the workflow state.
 
 ## No Duplicate Validation In Database Functions
 
@@ -183,7 +195,7 @@ Do not re-validate in an RPC/function what the UI already validates or guarantee
 - Validate each such rule once, in the UI. Do not add a matching SQLSTATE, error message, or
   test case for a rule the function does not own.
 - Keep in the function only what the UI cannot guarantee:
-  - Access control: who the caller is, suspension, ownership, tenant/branch scope, and
+  - Access control: who the caller is, organization access status (restriction), ownership, tenant/branch scope, and
     permissions. Functions are callable directly through PostgREST, and `SECURITY DEFINER`
     functions bypass RLS, so these checks are never optional.
   - Guards that depend on current database state and protect other users' data, such as
@@ -204,35 +216,31 @@ Do not re-validate in an RPC/function what the UI already validates or guarantee
 When reviewing changes, explicitly check:
 
 - Completeness: the change fully satisfies the requested workflow, edge cases, and expected user paths.
-- Correctness: the implementation matches the intended data model, API contracts, UI behavior, and business rules.
-- Repo-rule compliance: the change follows this `AGENTS.md`, relevant skills, API, migration, permission, and transaction rules.
+- Correctness: the implementation matches the intended data model, RPC and view contracts, UI behavior, and business rules.
+- Repo-rule compliance: the change follows this `AGENTS.md`, relevant skills, and the data-access, migration, permission, and transaction rules.
 - Maintainability and spaghetti-code risks: flag tangled control flow or state, mixed responsibilities,
   oversized components or functions, duplicated business logic, excessive coupling, unclear
   abstractions, misleading names, mutation chains, and code that is unnecessarily difficult to test
   or modify. Report only concrete, actionable findings with file locations and severity.
 - Dead code removal: obsolete code, unused imports, redundant migrations, stale helpers, and unreachable branches introduced or made obsolete by the change are removed.
-- Breaking changes and regressions: the change does not break existing workflows, API contracts, schema expectations, permissions, localization, pagination/filtering, or previously supported behavior unless explicitly requested and documented.
+- Breaking changes and regressions: the change does not break existing workflows, RPC and view contracts, schema expectations, permissions, localization, pagination/filtering, or previously supported behavior unless explicitly requested and documented.
 
 
 ## Documentation Sync
 
-After every implementation task, check whether changes affect `docs/kb` or `docs/guides`. Use `project-docs-sync` for this post-flight check.
+After every implementation task, check whether the change affects the planning documents in `docs/` (`prd.md`, `trd.md`, `app-flow.md`, `design-brief.md`, `backend-schema.md`, `implementation-plan.md`) or the owner guides in `docs/guides/` (created in phase 9).
+
+`docs/backend-schema.md` stays in step with the migrations: a change that adds, renames, or removes a table, column, enum value, view, function, policy rule, or storage bucket updates it in the same change. Exact SQL lives only in `supabase/migrations/` and `supabase/baseline.sql`.
 
 Update relevant docs when the task changes:
 
 - User-visible module behavior.
 - Workflows or business rules.
-- API request/response contracts.
-- Database schema, RLS, permissions, RPCs, triggers, generated document/control codes, or redaction behavior.
+- RPC arguments and results, or view columns.
+- Database schema, RLS, permissions, RPCs, triggers, generated codes, or redaction behavior.
 - Configuration, setup, operational guidance, architecture, reports, dashboards, lists, selects, or pagination behavior.
 
-Do not update docs for purely internal refactors with no behavior, contract, workflow, or operational impact.
-
-Final responses must state:
-
-- Documentation checked.
-- Documentation updated, or why no update was needed.
-- Missing documentation coverage discovered, if any.
+Do not update docs for purely internal refactors with no behavior, contract, workflow, or operational impact. Report the outcome as set out in the Final Response Contract.
 
 
 ## Final Response Contract
@@ -244,7 +252,189 @@ At completion, report:
 - Validation skipped and why.
 - Cleanup performed, or why no cleanup was needed.
 - Missing test coverage, if any.
-- For DB/API work, schema or migration verification outcome.
+- For database work, schema or migration verification outcome.
 - For list/select/report work, server-side filtering and pagination impact.
-- For permission work, API and UI enforcement impact.
+- For permission work, RLS/RPC and UI enforcement impact.
 - Documentation checked and documentation updated, or why no update was needed.
+- Missing documentation coverage discovered, if any.
+
+## Critical Architecture Rules
+
+### Tenancy
+- The tenant is the **organization** (an owner's business). Each organization has one or more **branches**.
+- **Every tenant table carries `organization_id`** with RLS. Policies resolve the caller's organizations with a set-based membership lookup, following the RLS Predicate Performance Rule.
+- **Roles**:
+  - `owner`: everything in the organization. Only the owner edits organization-wide data (organization profile, service catalogue, staff profiles, commission rates, policies, team, billing) and branch payment details.
+  - `manager`: at assigned branches, everything a staff member can do, plus deposit review, the daily close, branch-level setup (hours, closures, photos, service offerings and price overrides, staff shifts and time off), and the branches' sales. Reads the organization's catalogue and client list, and merges duplicate clients.
+  - `staff`: at assigned branches, floor work: add walk-ins, create and reschedule appointments, check in, start, mark no-show, and run checkout. Reads their branches' schedule, the clients on those bookings, the sales they completed, and their own sale items. Finds existing clients through `search_clients` (name and mobile number only). No setup, no daily close, and no branch sales totals.
+  - Deposit review is allowed for owners, managers, and staff with `can_review_deposits`.
+- **Client accounts are platform-wide** (`profiles`). Each organization keeps its own private client record (`clients`) linked to the account; it is never visible to another organization.
+- **Restricted organizations**: membership lookups used by policies require `access_status = 'active'`. Statement tables use a separate owner policy that ignores access status. Client-facing booking functions never check access status.
+
+### Database & Timestamps
+- **ALWAYS use `timestamptz`** for booking, shift, closure, and billing timestamps
+- **Each branch MUST have an IANA timezone** (default `Asia/Manila`), used for all slot and business-date calculations
+- **Use half-open intervals `[start_at, end_at)`** for overlap checks
+- **Database timestamps are the source of truth** - never rely on client-side timers for expiry
+- Money is `numeric(20,2)`; percentages are `numeric(5,2)`
+
+### Money Rules
+- **Prices, deposits, and convenience fees are calculated in the database**, never taken from the client
+- `amount_due = deposit_amount + convenience_fee`; the deposit is deducted at checkout, the fee is not
+- **A deposit is mandatory for online bookings** and must be greater than zero
+- The fee is a percentage of the booking's service total, bounded by the minimum and maximum in `platform_settings`
+- **Create exactly one `fee_entries` row when a deposit is accepted.** Never delete or reverse it when the booking is later cancelled, refunded, or a no-show
+- Staff-entered appointments and walk-ins carry no deposit and no fee
+- Money never passes through GroomBox: clients pay the shop, owners pay GroomBox against statements
+
+### Payment Instructions
+- **MUST snapshot payment instructions** onto the booking record when the hold is created
+- This prevents owners from editing historical payment data after bookings are made
+- Store snapshot in `payment_instructions_snapshot` field; also snapshot service names, durations, and prices in `booking_services`
+
+### Booking State Machine
+**Never silently release slots with submitted payment proofs** - when `review_expires_at` passes after proof submission, move to `review_expired_pending_resolution` and notify both sides (the client may have already paid outside the platform).
+
+**Slot blocking rules:**
+- `held` blocks the slot only while `hold_expires_at > now()`
+- `payment_submitted` and `needs_resubmission` block the slot
+- `review_expired_pending_resolution` keeps the slot blocked until staff accept or reject
+- `confirmed`, `checked_in`, `in_service`, and `completed` block the slot
+- `hold_expired`, `payment_rejected`, `cancelled`, and `no_show` release the slot
+- `waiting` (walk-in queue) has no time range until service starts
+
+**Overlap guard:** an exclusion constraint on `(staff_id, tstzrange(start_at, end_at, '[)'))` over the blocking statuses. Because a constraint cannot depend on `now()`, booking functions first move the staff member's expired holds to `hold_expired`, then insert.
+
+### Security & RLS
+- **Payment proof screenshots are private** - short-lived signed URLs only, readable by the submitter and permitted reviewers
+- **Guests use Supabase anonymous sessions** protected by the bot check; upgrading links a Google or Facebook identity to the same user
+- **Public data goes through views** that expose only public columns (`public_branches`, `public_branch_services`, `public_branch_staff`)
+- **The directory is for signed-in, non-guest users only**, limited to published branches of listed organizations; a shop's own booking page never shows other shops
+- `SECURITY DEFINER` only where a function must cross the caller's RLS limits (for example a client creating a booking inside an organization), and every such function performs its own access checks
+- **Restricted organizations**: members are locked out of every branch; the owner can still read statements and payment instructions
+
+### File Storage
+- **5 MB max file size** for all uploads
+- **MIME type validation required**; images only
+- Buckets: `shop-media` (public: organization logo, branch photos, staff photos), `payment-qr` (public), `payment-proofs` (private), `avatars` (public)
+- Paths start with `{organization_id}/` (or `{user_id}/` for avatars) so storage policies can scope them; the full path patterns are in `docs/backend-schema.md`
+
+## Common Development Patterns
+
+### Implementing Booking Logic
+```
+// Use transactional RPCs and the exclusion constraint to prevent overlapping bookings
+// Check conflicts with: blocking bookings, unexpired holds, review-blocked bookings, staff time off, branch closures
+// Always snapshot payment instructions and services at hold creation time
+// "Any available" picks the qualifying staff member with the fewest booked minutes that day
+// Store metadata in JSONB: policy_acceptance_metadata, cancellation_metadata
+```
+
+### Shop Onboarding
+- Owners sign up directly; there is **no approval step**. The platform admin can restrict an organization
+- `create_organization` creates the organization, the owner membership, and the first branch in one transaction
+- Members join through single-use invite links carrying a role and branch assignments
+- A bookable staff profile does not need a login; it can be linked to a member later
+
+### Branch Publishing Requirements
+The owner publishes by setting `is_published` on the branch. Following No Duplicate Validation, the setup screen owns these checks and the database does not repeat them. Cannot publish a branch without:
+- Address, city, and area
+- Operating hours
+- At least one offered service
+- At least one bookable staff member with a shift at the branch
+- Payment instructions (method, account name, account number, QR image)
+- Terms accepted by the owner
+
+While a branch is published, the setup screens refuse to remove the last of any required item and ask the owner to unpublish first. Unpublishing stops new online bookings only; existing bookings keep their status and stay reachable by their code. A branch is deactivated only after it is unpublished and has no upcoming bookings, which the branch setup screen checks.
+
+### Services, Pricing, and Commission
+- Services are defined once per organization; `branch_services` marks which a branch offers, with an optional price override
+- A service may be "starting at" priced; the final price is set at checkout
+- Deposit rule is per organization (`fixed` or `percent`), with an optional per-service override
+- Commission is the staff default percentage, overridden per staff and service, applied to each item's price **after discount**
+- Tips go fully to the staff member who performed the service
+
+### Scheduled Jobs (pg_cron)
+- Jobs run inside Postgres and must be **idempotent**
+- `expire_holds`: unpaid `held` past `hold_expires_at` → `hold_expired` (releases the slot)
+- `expire_reviews`: `payment_submitted` or `needs_resubmission` past `review_expires_at` → `review_expired_pending_resolution` (keeps the slot, notifies both sides)
+- `issue_fee_statements`: on a cut-off date, one statement per organization for unbilled entries at or above the statement minimum
+- `restrict_overdue_organizations`: statements past `due_at` → organization `restricted`
+- Notifications are in-app rows only; no email, SMS, or push in the first release
+
+### Multi-Service Bookings
+- A booking is one client, one staff member, and one or more services back to back
+- Show each service's price and duration, the service total, deposit, convenience fee, amount due now, and balance due at the shop
+- Preserve the selected services, staff, and time through the guest or sign-in step
+
+### Proof of Payment
+- **Require policy acceptance BEFORE creating the hold**
+- Required fields: payment reference number, amount paid, method
+- Optional: screenshot, note
+- Reporting payment stops the hold timer and starts the review timer
+- Allow resubmission while in `needs_resubmission`; at most one `submitted` proof per booking at a time
+- Show a warning that payments happen outside GroomBox
+
+### Walk-ins, Checkout, and Daily Close
+- Walk-ins enter as `waiting` with a per-branch, per-day queue number; `start_service` assigns staff and the time range
+- `complete_checkout` is one transactional RPC: sale, items, payments, commission, deposit deduction, and booking completion
+- A closed business day rejects new or changed sales until the owner reopens it
+- The daily close requires every visit of that business day (`waiting`, `confirmed`, `checked_in`, `in_service`) to be completed, cancelled, or marked no-show. Online bookings still waiting on a deposit decision (`held`, `payment_submitted`, `needs_resubmission`, `review_expired_pending_resolution`) do not block the close; they stay in the deposits list
+
+### Fee Billing and Restriction
+- One cut-off schedule for all organizations, set in `platform_settings`
+- Statements are per organization with a branch breakdown; balances under the statement minimum carry over
+- Fee entries are insert-only; corrections are `adjustment` entries added by a platform admin
+- `mark_statement_paid` restores access when no other statement is overdue
+- Restriction locks members out of the app; booking links stay live and keep accepting bookings
+
+### Platform Admins
+- Assigned manually by inserting into `platform_admins` - no invite system in the first release
+
+## Slot Generation Rules
+
+Generate bookable start times from:
+- Branch operating hours and closures (in the branch timezone)
+- Staff shifts at the branch and staff time off
+- Services the staff member performs
+- Total duration of the chosen services plus buffer time
+- Blocking bookings (respecting the state machine rules above)
+
+## Demo/Seed Data
+
+Create via **seed script or documented Supabase Auth admin process** (NOT migrations):
+- Users: platform admin, owners, managers, staff with and without logins, clients, a guest session
+- Two organizations: one with two branches, one with one branch and `restricted` access
+- Organizations with `org_category` values from the launch segment (salon, barbershop, or spa)
+- Service categories, service catalogue, branch offerings and overrides, staff, shifts, time off
+- Branches with address, city/area, timezone, hours, closures, photos, payment instructions and QR
+- Bookings in ALL lifecycle states, payment proofs in every status
+- Completed sales and one closed business day
+- Fee entries, one paid statement, one issued, one overdue
+- Notifications for each user type
+
+## What NOT to Build (First Release)
+
+- Native mobile app
+- Server rendering, Edge Functions, webhooks, or any custom API layer (ask first)
+- Automatic payment gateway or in-app refunds
+- Email, SMS, push notifications, or automated reminders
+- Inventory, payroll export, memberships and packages, marketing campaigns
+- Reviews, ratings, deals, vouchers, promoted listings, favourites
+- Consolidated cross-branch reports beyond the daily close
+- Official tax receipts
+- Owner approval or identity verification
+- Invite-based platform admin creation
+- Map-first browse (list-first directory; PostGIS deferred)
+
+## Key Gotchas
+
+1. **Never auto-release slots with submitted proofs** - the client may have already paid
+2. **Guests can book without an account** - anonymous session, upgraded later by linking Google or Facebook
+3. **Google sign-in is blocked inside Messenger and Instagram browsers** - prompt to open in the phone's browser first
+4. **The fee is owed once a deposit is accepted** - cancellations, refunds, and no-shows do not remove it
+5. **Restriction locks members, not clients** - booking links keep working while an organization is restricted
+6. **One staff member per booking** - multiple services run back to back
+7. **Deposit plus fee at booking, balance at the shop** - the deposit is deducted at checkout, the fee is not
+8. **Platform admins are assigned manually in the database**
+9. **List-first directory** - not map-first

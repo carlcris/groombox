@@ -1,6 +1,6 @@
 # GroomBox: design brief
 
-Last updated: 2026-10-09
+Last updated: 2026-11-02
 Related: [product requirements](prd.md), [app flow](app-flow.md), [technical requirements](trd.md)
 
 ## 1. Direction
@@ -148,7 +148,7 @@ Built on shadcn/ui. GroomBox-specific patterns:
 
 | Component | Specification |
 |---|---|
-| Primary button | `h-12` on phones, `h-10` on desktop, full width in forms and sheets, one per screen |
+| Primary button | `h-12` on phones, `h-11` on tablet and desktop (keeps the 44px touch target, since `lg` includes landscape tablets), full width in forms and sheets, one per screen |
 | Sticky action bar | Fixed to the bottom on phones with safe-area padding; holds the primary button and, in the booking flow, the running total |
 | Status badge | Pill with icon and label, using the status colours. One component maps every booking state |
 | Amount row | Label left, amount right in tabular figures. The "due now" row is larger and bold with a top divider |

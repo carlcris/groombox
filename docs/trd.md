@@ -1,6 +1,6 @@
 # GroomBox: technical requirements (TRD)
 
-Last updated: 2026-10-09
+Last updated: 2026-11-05
 Related: [product requirements](prd.md), [app flow](app-flow.md), [design brief](design-brief.md), [backend schema](backend-schema.md), [implementation plan](implementation-plan.md)
 
 ## 1. Architecture
@@ -44,9 +44,10 @@ There is no application server, no custom API layer, no server-rendered page, an
 ```
 src/
   routes/                 TanStack Router file routes
-    _client/              client area (signed-in clients)
-    _shop/                floor view and owner dashboard (members)
-    _admin/               platform admin
+    _client/              client area (signed-in clients); pathless, routes such as /home
+    shop/                 floor view and owner dashboard (members), under /shop
+    admin/                platform admin, under /admin
+    onboarding/           owner's first organization and branch setup
     b.$branchSlug/        public booking flow
     o.$orgSlug/           public organization page
   features/               one folder per domain
@@ -69,7 +70,7 @@ Each feature folder holds its queries, mutations, schemas, and components. A fea
 ## 4. Data access rules
 
 1. **Reads** go to tables or views through PostgREST with explicit column lists. No `select("*")`, at any nesting level.
-2. **Writes that touch one row with no rules** may use table inserts and updates under row-level security.
+2. **Writes that touch one row with no rules** may use table inserts and updates under row-level security. Each such table has an `AFTER` trigger that writes the activity log row (marking a notification read is not logged).
 3. **Everything else is a database function** called with `.rpc()`: any write to more than one row or table, any status change, anything that calculates money. One client call per logical operation.
 4. **Functions are transactional**: lock the main row with `FOR UPDATE`, check current status and the caller's scope, apply all writes, set the final status. A failure leaves nothing committed.
 5. **Functions do not repeat UI validation.** They check only what the UI cannot guarantee: who the caller is, tenant and branch scope, permissions, and conditions that depend on current database state such as overlapping bookings.
@@ -98,10 +99,10 @@ Each feature folder holds its queries, mutations, schemas, and components. A fea
 
 | Role | Read | Write |
 |---|---|---|
-| Owner | Whole organization | Whole organization |
-| Manager | Assigned branches, plus the catalogue and client list | Assigned branches |
-| Staff | Own schedule, floor data for assigned branches | Visit status for assigned branches; deposit review only if permitted |
-| Client or guest | Own profile, own bookings and proofs, public branch data | Through booking functions only |
+| Owner | Whole organization | Whole organization; the only role that edits the organization profile, service catalogue, staff profiles, commission, policies, team, and branch payment details |
+| Manager | Assigned branches, plus the catalogue and client list | At assigned branches: everything staff can write, deposit review, daily close, and branch-level setup (hours, closures, photos, service offerings and price overrides, staff shifts and time off) |
+| Staff | Floor data for assigned branches, the clients on those bookings, the sales they completed, and their own sale items; other clients only through `search_clients` (name and mobile number) | Floor work at assigned branches: walk-ins, appointments and rescheduling, visit status, checkout; deposit review only if permitted |
+| Client or guest | Own profile, own bookings and proofs, public branch data | Own profile directly; bookings and proofs through booking functions only |
 | Platform admin | Statements, fee entries, organizations, platform settings | Statements, settings, organization access |
 
 - **Restriction**: the membership lookup used by policies requires the organization's access status to be `active`. Statement tables use a separate policy that ignores access status for the owner. Client-facing booking functions do not check access status.
@@ -154,8 +155,8 @@ Realtime events trigger a TanStack Query refetch; they are not applied to the ca
 
 | Bucket | Access | Contents |
 |---|---|---|
-| `branch-media` | Public read; members write | Branch and staff photos |
-| `payment-qr` | Public read; owner and managers write | Deposit QR images |
+| `shop-media` | Public read; owner writes, managers write their branches' photos | Organization logo, branch photos, staff photos |
+| `payment-qr` | Public read; owner writes | Deposit QR images |
 | `payment-proofs` | Private; uploader and permitted members read through short-lived signed URLs | Payment screenshots |
 | `avatars` | Public read; owner of the file writes | Profile photos |
 
@@ -163,7 +164,7 @@ Uploads are limited to 5 MB and to image types, checked by bucket settings and p
 
 ## 11. Notifications
 
-In-app only. Database functions insert notification rows as part of the operation that causes them; the app shows them live. A failed notification insert must not roll back the operation.
+In-app only. Database functions insert notification rows as part of the operation that causes them; the app shows them live. A failed notification insert must not roll back the operation, so each insert runs in a nested `BEGIN … EXCEPTION` block that reports the failure with `RAISE WARNING`.
 
 ## 12. Non-functional requirements
 
@@ -181,19 +182,19 @@ In-app only. Database functions insert notification rows as part of the operatio
 ## 13. Environments
 
 - **Local**: Supabase CLI with Docker. All development and tests run here.
-- **Hosted**: one Supabase project and one static site for the pilot. Repository rules forbid Claude from running any command against a remote system, so the product owner applies migrations and deploys.
+- **Hosted**: one Supabase project and one static site for the pilot. Repository rules (`AGENTS.md`) forbid coding agents from running any command against a remote system, so the product owner applies migrations and deploys.
 - Environment variables in the app are limited to the Supabase URL and the public anon key.
 
 ## 14. Testing
 
-- End-to-end tests with Playwright are the main mechanism, written per feature before it is called done, running against local Supabase with seed data.
+- End-to-end tests with Playwright are the main mechanism, written per feature before it is called done, running against local Supabase with seed data. Each run keeps its HTML report, with traces for failed tests.
 - pgTAP tests cover row-level rules: each role, each tenant boundary, restricted organizations, and anonymous users.
 - Transactional functions are tested for the success path and for a forced failure after an earlier write, proving nothing is left behind.
 - `npm run db:baseline:check` runs after every schema change.
 
 ## 15. Repository instructions
 
-`CLAUDE.md` and `AGENTS.md` hold the engineering rules for this repository: strict TypeScript, explicit column lists, transactional database functions, PostgREST with no API layer, migration and baseline handling, naming, cleanup, and the testing approach. `CLAUDE.md` also carries the GroomBox domain rules (tenancy, money, booking states, scheduled jobs, scope). Keep them consistent with this document; if they disagree, raise it rather than picking one silently.
+`AGENTS.md` holds every rule for this repository: no remote commands, strict TypeScript, explicit column lists, transactional database functions, PostgREST with no API layer, migration and baseline handling, naming, cleanup, the testing approach, and the GroomBox domain rules (tenancy, roles, money, booking states, scheduled jobs, scope). `CLAUDE.md` only imports it. Keep `AGENTS.md` consistent with this document; if they disagree, raise it rather than picking one silently.
 
 ## 16. Deferred, with the intended approach
 

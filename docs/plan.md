@@ -1,6 +1,6 @@
 # GroomBox: product and build plan
 
-Last updated: 2026-10-06
+Last updated: 2026-11-02
 
 > This is the original summary plan. The detailed documents written from it on 2026-10-09 are the source of truth where they differ: [PRD](prd.md), [TRD](trd.md), [app flow](app-flow.md), [design brief](design-brief.md), [backend schema](backend-schema.md), [implementation plan](implementation-plan.md).
 
@@ -158,7 +158,7 @@ Rules:
 - **Services** are defined once per organization; each branch chooses which it offers and can override the price.
 - **Clients** have two layers. A client account is platform-wide: one sign-in and profile used across every shop. Each organization also keeps its own client record (notes, visit history) linked to that account, shared across the organization's branches and never visible to other organizations.
 - **Clients see only their own data**: their profile and their own bookings, plus the directory.
-- **Guest booking**: a client can book from a shop's link without an account, giving a name and mobile number, and is offered an account afterwards. A guest booking creates an organization client record with no linked account.
+- **Guest booking**: a client can book from a shop's link without an account, giving a name and mobile number, and is offered an account afterwards. A guest booking creates an organization client record linked to the guest's anonymous account, which carries over when the guest upgrades.
 - **Client sign-in**: Google and Facebook, through Supabase Auth.
 - **Directory listing**: branches are listed by default; an organization can opt out. The directory appears only in the client area, for signed-in clients. A shop's booking page never shows other shops.
 - **Billing** is per organization: one statement per cut-off, broken down by branch. Restriction for an unpaid statement applies to the whole organization.
@@ -175,7 +175,7 @@ Rules:
 - Client accounts (platform-wide profile)
 - Organization client records (per-organization notes and history, linked to a client account when one exists)
 - Bookings (appointments and walk-ins)
-- Payments (deposits, checkout payments, refunds)
+- Payments (deposit proofs and checkout payments; refunds are settled outside the app and recorded on the booking)
 - Commission rules
 - Fee entries (one per confirmed deposit)
 - Fee statements (one per organization per cut-off period, with paid status)
@@ -230,4 +230,4 @@ Supabase Edge Functions for those calls only, or pure database with the `pg_net`
 
 ## Next step
 
-Phase 1: scaffold the project, define the data model, and build owner sign-up and shop setup. Requires a Supabase account.
+Superseded by [implementation plan](implementation-plan.md) phase 1, which runs entirely against local Supabase; a hosted Supabase project is needed only at pilot readiness (phase 9).
