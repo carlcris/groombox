@@ -14,13 +14,18 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SignUpRouteImport } from './routes/sign-up'
+import { Route as BBranchSlugRouteImport } from './routes/b.$branchSlug'
+import { Route as BookingBookingCodeRouteImport } from './routes/booking.$bookingCode'
 import { Route as InviteCodeRouteImport } from './routes/invite.$code'
+import { Route as OOrgSlugRouteImport } from './routes/o.$orgSlug'
 import { Route as ShopIndexRouteImport } from './routes/shop/index'
 import { Route as ShopBranchIdRouteImport } from './routes/shop/$branchId'
 import { Route as ShopNotificationsRouteImport } from './routes/shop/notifications'
 import { Route as ShopRestrictedRouteImport } from './routes/shop/restricted'
 import { Route as ShopSetupRouteImport } from './routes/shop/setup'
 import { Route as ShopTeamRouteImport } from './routes/shop/team'
+import { Route as BBranchSlugIndexRouteImport } from './routes/b.$branchSlug.index'
+import { Route as BBranchSlugBookRouteImport } from './routes/b.$branchSlug.book'
 import { Route as ShopBranchIdFloorRouteImport } from './routes/shop/$branchId/floor'
 import { Route as ShopBranchIdSetupRouteImport } from './routes/shop/$branchId/setup'
 import { Route as ShopSetupIndexRouteImport } from './routes/shop/setup/index'
@@ -55,9 +60,24 @@ const SignUpRoute = SignUpRouteImport.update({
   path: '/sign-up',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BBranchSlugRoute = BBranchSlugRouteImport.update({
+  id: '/b/$branchSlug',
+  path: '/b/$branchSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingBookingCodeRoute = BookingBookingCodeRouteImport.update({
+  id: '/booking/$bookingCode',
+  path: '/booking/$bookingCode',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InviteCodeRoute = InviteCodeRouteImport.update({
   id: '/invite/$code',
   path: '/invite/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OOrgSlugRoute = OOrgSlugRouteImport.update({
+  id: '/o/$orgSlug',
+  path: '/o/$orgSlug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShopIndexRoute = ShopIndexRouteImport.update({
@@ -89,6 +109,16 @@ const ShopTeamRoute = ShopTeamRouteImport.update({
   id: '/team',
   path: '/team',
   getParentRoute: () => ShopRoute,
+} as any)
+const BBranchSlugIndexRoute = BBranchSlugIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BBranchSlugRoute,
+} as any)
+const BBranchSlugBookRoute = BBranchSlugBookRouteImport.update({
+  id: '/book',
+  path: '/book',
+  getParentRoute: () => BBranchSlugRoute,
 } as any)
 const ShopBranchIdFloorRoute = ShopBranchIdFloorRouteImport.update({
   id: '/floor',
@@ -137,13 +167,17 @@ export interface FileRoutesByFullPath {
   '/shop': typeof ShopRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/b/$branchSlug': typeof BBranchSlugRouteWithChildren
+  '/booking/$bookingCode': typeof BookingBookingCodeRoute
   '/invite/$code': typeof InviteCodeRoute
+  '/o/$orgSlug': typeof OOrgSlugRoute
   '/shop/$branchId': typeof ShopBranchIdRouteWithChildren
   '/shop/notifications': typeof ShopNotificationsRoute
   '/shop/restricted': typeof ShopRestrictedRoute
   '/shop/setup': typeof ShopSetupRouteWithChildren
   '/shop/team': typeof ShopTeamRoute
   '/shop/': typeof ShopIndexRoute
+  '/b/$branchSlug/book': typeof BBranchSlugBookRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
   '/shop/setup/branches': typeof ShopSetupBranchesRoute
@@ -151,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/shop/setup/policies': typeof ShopSetupPoliciesRoute
   '/shop/setup/services': typeof ShopSetupServicesRoute
   '/shop/setup/staff': typeof ShopSetupStaffRoute
+  '/b/$branchSlug/': typeof BBranchSlugIndexRoute
   '/shop/setup/': typeof ShopSetupIndexRoute
 }
 export interface FileRoutesByTo {
@@ -158,12 +193,15 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/booking/$bookingCode': typeof BookingBookingCodeRoute
   '/invite/$code': typeof InviteCodeRoute
+  '/o/$orgSlug': typeof OOrgSlugRoute
   '/shop/$branchId': typeof ShopBranchIdRouteWithChildren
   '/shop/notifications': typeof ShopNotificationsRoute
   '/shop/restricted': typeof ShopRestrictedRoute
   '/shop/team': typeof ShopTeamRoute
   '/shop': typeof ShopIndexRoute
+  '/b/$branchSlug/book': typeof BBranchSlugBookRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
   '/shop/setup/branches': typeof ShopSetupBranchesRoute
@@ -171,6 +209,7 @@ export interface FileRoutesByTo {
   '/shop/setup/policies': typeof ShopSetupPoliciesRoute
   '/shop/setup/services': typeof ShopSetupServicesRoute
   '/shop/setup/staff': typeof ShopSetupStaffRoute
+  '/b/$branchSlug': typeof BBranchSlugIndexRoute
   '/shop/setup': typeof ShopSetupIndexRoute
 }
 export interface FileRoutesById {
@@ -180,13 +219,17 @@ export interface FileRoutesById {
   '/shop': typeof ShopRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/b/$branchSlug': typeof BBranchSlugRouteWithChildren
+  '/booking/$bookingCode': typeof BookingBookingCodeRoute
   '/invite/$code': typeof InviteCodeRoute
+  '/o/$orgSlug': typeof OOrgSlugRoute
   '/shop/$branchId': typeof ShopBranchIdRouteWithChildren
   '/shop/notifications': typeof ShopNotificationsRoute
   '/shop/restricted': typeof ShopRestrictedRoute
   '/shop/setup': typeof ShopSetupRouteWithChildren
   '/shop/team': typeof ShopTeamRoute
   '/shop/': typeof ShopIndexRoute
+  '/b/$branchSlug/book': typeof BBranchSlugBookRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
   '/shop/setup/branches': typeof ShopSetupBranchesRoute
@@ -194,6 +237,7 @@ export interface FileRoutesById {
   '/shop/setup/policies': typeof ShopSetupPoliciesRoute
   '/shop/setup/services': typeof ShopSetupServicesRoute
   '/shop/setup/staff': typeof ShopSetupStaffRoute
+  '/b/$branchSlug/': typeof BBranchSlugIndexRoute
   '/shop/setup/': typeof ShopSetupIndexRoute
 }
 export interface FileRouteTypes {
@@ -204,13 +248,17 @@ export interface FileRouteTypes {
     | '/shop'
     | '/sign-in'
     | '/sign-up'
+    | '/b/$branchSlug'
+    | '/booking/$bookingCode'
     | '/invite/$code'
+    | '/o/$orgSlug'
     | '/shop/$branchId'
     | '/shop/notifications'
     | '/shop/restricted'
     | '/shop/setup'
     | '/shop/team'
     | '/shop/'
+    | '/b/$branchSlug/book'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
     | '/shop/setup/branches'
@@ -218,6 +266,7 @@ export interface FileRouteTypes {
     | '/shop/setup/policies'
     | '/shop/setup/services'
     | '/shop/setup/staff'
+    | '/b/$branchSlug/'
     | '/shop/setup/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -225,12 +274,15 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/sign-in'
     | '/sign-up'
+    | '/booking/$bookingCode'
     | '/invite/$code'
+    | '/o/$orgSlug'
     | '/shop/$branchId'
     | '/shop/notifications'
     | '/shop/restricted'
     | '/shop/team'
     | '/shop'
+    | '/b/$branchSlug/book'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
     | '/shop/setup/branches'
@@ -238,6 +290,7 @@ export interface FileRouteTypes {
     | '/shop/setup/policies'
     | '/shop/setup/services'
     | '/shop/setup/staff'
+    | '/b/$branchSlug'
     | '/shop/setup'
   id:
     | '__root__'
@@ -246,13 +299,17 @@ export interface FileRouteTypes {
     | '/shop'
     | '/sign-in'
     | '/sign-up'
+    | '/b/$branchSlug'
+    | '/booking/$bookingCode'
     | '/invite/$code'
+    | '/o/$orgSlug'
     | '/shop/$branchId'
     | '/shop/notifications'
     | '/shop/restricted'
     | '/shop/setup'
     | '/shop/team'
     | '/shop/'
+    | '/b/$branchSlug/book'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
     | '/shop/setup/branches'
@@ -260,6 +317,7 @@ export interface FileRouteTypes {
     | '/shop/setup/policies'
     | '/shop/setup/services'
     | '/shop/setup/staff'
+    | '/b/$branchSlug/'
     | '/shop/setup/'
   fileRoutesById: FileRoutesById
 }
@@ -269,7 +327,10 @@ export interface RootRouteChildren {
   ShopRoute: typeof ShopRouteWithChildren
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
+  BBranchSlugRoute: typeof BBranchSlugRouteWithChildren
+  BookingBookingCodeRoute: typeof BookingBookingCodeRoute
   InviteCodeRoute: typeof InviteCodeRoute
+  OOrgSlugRoute: typeof OOrgSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -309,11 +370,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignUpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/b/$branchSlug': {
+      id: '/b/$branchSlug'
+      path: '/b/$branchSlug'
+      fullPath: '/b/$branchSlug'
+      preLoaderRoute: typeof BBranchSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking/$bookingCode': {
+      id: '/booking/$bookingCode'
+      path: '/booking/$bookingCode'
+      fullPath: '/booking/$bookingCode'
+      preLoaderRoute: typeof BookingBookingCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invite/$code': {
       id: '/invite/$code'
       path: '/invite/$code'
       fullPath: '/invite/$code'
       preLoaderRoute: typeof InviteCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/o/$orgSlug': {
+      id: '/o/$orgSlug'
+      path: '/o/$orgSlug'
+      fullPath: '/o/$orgSlug'
+      preLoaderRoute: typeof OOrgSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shop/': {
@@ -357,6 +439,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/shop/team'
       preLoaderRoute: typeof ShopTeamRouteImport
       parentRoute: typeof ShopRoute
+    }
+    '/b/$branchSlug/': {
+      id: '/b/$branchSlug/'
+      path: '/'
+      fullPath: '/b/$branchSlug/'
+      preLoaderRoute: typeof BBranchSlugIndexRouteImport
+      parentRoute: typeof BBranchSlugRoute
+    }
+    '/b/$branchSlug/book': {
+      id: '/b/$branchSlug/book'
+      path: '/book'
+      fullPath: '/b/$branchSlug/book'
+      preLoaderRoute: typeof BBranchSlugBookRouteImport
+      parentRoute: typeof BBranchSlugRoute
     }
     '/shop/$branchId/floor': {
       id: '/shop/$branchId/floor'
@@ -473,13 +569,30 @@ const ShopRouteChildren: ShopRouteChildren = {
 
 const ShopRouteWithChildren = ShopRoute._addFileChildren(ShopRouteChildren)
 
+interface BBranchSlugRouteChildren {
+  BBranchSlugBookRoute: typeof BBranchSlugBookRoute
+  BBranchSlugIndexRoute: typeof BBranchSlugIndexRoute
+}
+
+const BBranchSlugRouteChildren: BBranchSlugRouteChildren = {
+  BBranchSlugBookRoute: BBranchSlugBookRoute,
+  BBranchSlugIndexRoute: BBranchSlugIndexRoute,
+}
+
+const BBranchSlugRouteWithChildren = BBranchSlugRoute._addFileChildren(
+  BBranchSlugRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   OnboardingRoute: OnboardingRoute,
   ShopRoute: ShopRouteWithChildren,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
+  BBranchSlugRoute: BBranchSlugRouteWithChildren,
+  BookingBookingCodeRoute: BookingBookingCodeRoute,
   InviteCodeRoute: InviteCodeRoute,
+  OOrgSlugRoute: OOrgSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

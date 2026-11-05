@@ -60,6 +60,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-brand-accent: var(--brand-accent);
+  --color-countdown: var(--countdown);
 
   --color-success: var(--success);
   --color-success-surface: var(--success-surface);
@@ -96,6 +97,7 @@
   --input: var(--color-stone-500);
   --ring: var(--color-teal-700);
   --brand-accent: var(--color-amber-400);
+  --countdown: var(--color-amber-600);
 
   --success: var(--color-green-700);
   --success-surface: var(--color-green-50);

@@ -87,3 +87,45 @@ export function branchLocalNow(timeZone: string): string {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
 }
+
+// Business dates are plain dates ("2026-11-07") with no time zone; they are shown and counted as
+// calendar dates.
+function businessDateToUtc(businessDate: string): Date {
+  const [year = 0, month = 1, day = 1] = businessDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+export function formatBusinessDate(businessDate: string): string {
+  const parts = displayParts(businessDateToUtc(businessDate), "UTC");
+  return `${parts.weekday}, ${parts.day} ${parts.month}`;
+}
+
+export function addDaysToBusinessDate(businessDate: string, days: number): string {
+  const date = businessDateToUtc(businessDate);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+// 0 for Sunday, as branch_hours.day_of_week counts.
+export function businessDateDayOfWeek(businessDate: string): number {
+  return businessDateToUtc(businessDate).getUTCDay();
+}
+
+export function formatTime(isoTimestamp: string, timeZone: string): string {
+  const parts = displayParts(new Date(isoTimestamp), timeZone);
+  return `${parts.hour}:${parts.minute} ${parts.dayPeriod}`;
+}
+
+function localDate(isoTimestamp: string, timeZone: string): string {
+  const parts = readParts(new Date(isoTimestamp), timeZone);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`;
+}
+
+// A time on a business date. After midnight at a late-night branch it carries the calendar day:
+// "1:00 AM (Sun)" (design brief §9).
+export function formatBusinessDayTime(isoTimestamp: string, timeZone: string, businessDate: string): string {
+  const time = formatTime(isoTimestamp, timeZone);
+  if (localDate(isoTimestamp, timeZone) === businessDate) return time;
+  return `${time} (${displayParts(new Date(isoTimestamp), timeZone).weekday})`;
+}

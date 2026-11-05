@@ -15,7 +15,7 @@ import type { ActiveService } from "@/features/catalogue/catalogue-queries";
 import { refreshBranchData } from "@/features/organization/branch-cache";
 import type { OwnedBranch } from "@/features/organization/branch-queries";
 import type { BranchSetupStatus } from "@/features/organization/branch-setup-status";
-import { PublishGuardError } from "@/features/organization/publish-guard-error";
+import { SetupGuardError } from "@/features/organization/setup-guard-error";
 import { readStaffShiftBranchIds, staffQueryKey, type LinkableMember, type StaffProfile } from "@/features/staff/staff-queries";
 import { BranchChoiceField } from "@/features/team/BranchChoiceField";
 import { useImageReplacement } from "@/hooks/useImageReplacement";
@@ -76,7 +76,7 @@ export function StaffProfileSheet({
         );
         if (lastAt) {
           const branchName = branches.find((branch) => branch.id === lastAt.branchId)?.name ?? "";
-          throw new PublishGuardError(
+          throw new SetupGuardError(
             fillTemplate(messages.publishGuards.staffAtPublishedBranch, { name: staff.displayName, branch: branchName }),
           );
         }

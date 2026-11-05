@@ -18,7 +18,7 @@ import {
 import { refreshBranchData } from "@/features/organization/branch-cache";
 import type { OwnedBranch } from "@/features/organization/branch-queries";
 import type { BranchSetupStatus } from "@/features/organization/branch-setup-status";
-import { PublishGuardError } from "@/features/organization/publish-guard-error";
+import { SetupGuardError } from "@/features/organization/setup-guard-error";
 import { fillTemplate, messages } from "@/lib/messages";
 import {
   amountText,
@@ -87,7 +87,7 @@ export function ServiceSheet({
         );
         if (lastAt) {
           const branchName = branches.find((branch) => branch.id === lastAt.branchId)?.name ?? "";
-          throw new PublishGuardError(fillTemplate(messages.publishGuards.serviceAtPublishedBranch, { branch: branchName }));
+          throw new SetupGuardError(fillTemplate(messages.publishGuards.serviceAtPublishedBranch, { branch: branchName }));
         }
       }
       const row = {
