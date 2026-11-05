@@ -186,6 +186,8 @@ Below the list, "Waiting for the client" shows bookings sent back for resubmissi
 5. Record how the balance was paid, by one or more methods. "Complete" stays disabled until the payments add up to the balance exactly; for cash, enter the cash received and the screen shows the change.
 6. Tap "Complete". The visit closes, the sale and commission are stored, and the floor updates.
 
+A visit in service shows "Checkout" on its queue card. Any visit opens on its own page from the floor, the calendar, or the client's history, with its moves under "Manage visit". When the deposit was larger than the bill, the completed visit shows the refund due, and a deposit reviewer records it there.
+
 ## 9. Flow: daily close
 
 1. Open "Close" for the branch. The business date defaults to the current one, so a spa closing at 2:00 AM still closes the day it opened.

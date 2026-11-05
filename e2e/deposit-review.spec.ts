@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { signIn } from "./account-steps";
+import { pixelImage, signIn } from "./account-steps";
 import { acceptAndHold, chooseSlot, standInForBotCheck } from "./booking-steps";
 
 // Phase 4 exit criteria: the full path works (hold, pay, report, accept, confirmed) with both sides
@@ -11,12 +11,6 @@ import { acceptAndHold, chooseSlot, standInForBotCheck } from "./booking-steps";
 // by name, so the runs can share the owner's deposit list.
 
 const havenMakatiBranchId = "30000000-0000-0000-0000-000000000001";
-
-// A 1 × 1 PNG, standing in for a payment screenshot.
-const screenshot = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC",
-  "base64",
-);
 
 async function guestHoldsSlot(browser: Browser, clientName: string, openDateIndex: number): Promise<Page> {
   const context = await browser.newContext();
@@ -56,7 +50,7 @@ test("a reported payment is reviewed, resubmitted, and accepted, with both sides
 
   // The client reports a short payment with a screenshot; it appears on the reviewer's list live.
   await client.getByRole("button", { name: "Add screenshot" }).click();
-  await client.locator('input[type="file"]').setInputFiles({ name: "receipt.png", mimeType: "image/png", buffer: screenshot });
+  await client.locator('input[type="file"]').setInputFiles({ name: "receipt.png", mimeType: "image/png", buffer: pixelImage });
   await expect(client.getByText("Screenshot added: receipt.png")).toBeVisible();
   await reportPayment(client, "GC-E2E-001", "100");
   await expect(client.getByText("₱100 · GCash · GC-E2E-001")).toBeVisible();

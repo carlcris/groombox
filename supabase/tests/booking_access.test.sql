@@ -58,11 +58,11 @@ set local role authenticated;
 
 -- 1–2. Members by branch scope and access status
 select pg_temp.act_as('10000000-0000-0000-0000-000000000002', false);
-select is(pg_temp.visible_booking_ids(), '01,02,03,04,06,07,08,09,10,11,12,13,14', 'the owner reads every booking of the organization');
+select is(pg_temp.visible_booking_ids(), '01,02,03,04,06,07,08,09,10,11,12,13,14,15,16', 'the owner reads every booking of the organization');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000003', false);
 select is(pg_temp.visible_booking_ids(), '01', 'a manager reads only their branch''s bookings');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000004', false);
-select is(pg_temp.visible_booking_ids(), '02,03,04,06,07,08,09,10,11,12,13,14', 'staff read only their branch''s bookings');
+select is(pg_temp.visible_booking_ids(), '02,03,04,06,07,08,09,10,11,12,13,14,15,16', 'staff read only their branch''s bookings');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000005', false);
 select is(pg_temp.visible_booking_ids(), '', 'the owner of a restricted organization reads no bookings');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000006', false);
@@ -70,10 +70,10 @@ select is(pg_temp.visible_booking_ids(), '', 'staff of a restricted organization
 
 -- 3. Clients and guests see what they created, across organizations
 select pg_temp.act_as('10000000-0000-0000-0000-000000000007', false);
-select is(pg_temp.visible_booking_ids(), '01,04,05,06,08', 'a client reads their own bookings at both organizations');
+select is(pg_temp.visible_booking_ids(), '01,04,05,06,08,16', 'a client reads their own bookings at both organizations');
 select is(
   (select count(*)::integer from public.booking_services where booking_id::text like '80000000-%'),
-  5,
+  7,
   'a client reads the services of their own bookings only'
 );
 select is((select count(*)::integer from public.clients), 0, 'a client reads no client records');

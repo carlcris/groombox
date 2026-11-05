@@ -660,6 +660,182 @@ export type Database = {
           },
         ];
       };
+      daily_close_staff: {
+        Row: {
+          commission_amount: number;
+          daily_close_id: string;
+          organization_id: string;
+          service_revenue: number;
+          staff_id: string;
+          tip_amount: number;
+          visit_count: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          commission_amount: number;
+          daily_close_id: string;
+          organization_id: string;
+          service_revenue: number;
+          staff_id: string;
+          tip_amount: number;
+          visit_count: number;
+        };
+        Update: {
+          commission_amount?: number;
+          daily_close_id?: string;
+          organization_id?: string;
+          service_revenue?: number;
+          staff_id?: string;
+          tip_amount?: number;
+          visit_count?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "daily_close_staff_daily_close_id_organization_id_fkey";
+            columns: ["daily_close_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "daily_closes";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "daily_close_staff_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "daily_close_staff_staff_id_organization_id_fkey";
+            columns: ["staff_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "staff";
+            referencedColumns: ["id", "organization_id"];
+          },
+        ];
+      };
+      daily_closes: {
+        Row: {
+          branch_id: string;
+          business_date: string;
+          cash_counted: number;
+          cash_expected: number;
+          cash_float: number;
+          cash_variance: number;
+          closed_at: string;
+          closed_by: string;
+          created_at: string;
+          deposits_applied: number;
+          deposits_received: number;
+          discounts: number;
+          fees_collected: number;
+          gross_sales: number;
+          id: string;
+          organization_id: string;
+          reopened_at: string | null;
+          reopened_by: string | null;
+          tips: number;
+          totals_by_method: NonNullable<Json>;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          branch_id: string;
+          business_date: string;
+          cash_counted: number;
+          cash_expected: number;
+          cash_float?: number;
+          cash_variance: number;
+          closed_at: string;
+          closed_by: string;
+          created_at?: string;
+          deposits_applied: number;
+          deposits_received: number;
+          discounts: number;
+          fees_collected: number;
+          gross_sales: number;
+          id?: string;
+          organization_id: string;
+          reopened_at?: string | null;
+          reopened_by?: string | null;
+          tips: number;
+          totals_by_method: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          business_date?: string;
+          cash_counted?: number;
+          cash_expected?: number;
+          cash_float?: number;
+          cash_variance?: number;
+          closed_at?: string;
+          closed_by?: string;
+          created_at?: string;
+          deposits_applied?: number;
+          deposits_received?: number;
+          discounts?: number;
+          fees_collected?: number;
+          gross_sales?: number;
+          id?: string;
+          organization_id?: string;
+          reopened_at?: string | null;
+          reopened_by?: string | null;
+          tips?: number;
+          totals_by_method?: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "daily_closes_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "branch_setup_status";
+            referencedColumns: ["branch_id", "organization_id"];
+          },
+          {
+            foreignKeyName: "daily_closes_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "daily_closes_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "my_branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "daily_closes_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "public_branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "daily_closes_closed_by_fkey";
+            columns: ["closed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "daily_closes_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "daily_closes_reopened_by_fkey";
+            columns: ["reopened_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       fee_entries: {
         Row: {
           accrued_at: string;
@@ -1290,6 +1466,274 @@ export type Database = {
         };
         Relationships: [];
       };
+      sale_items: {
+        Row: {
+          amount: number;
+          commission_amount: number;
+          commission_percent: number;
+          description: string;
+          discount_share: number;
+          id: string;
+          organization_id: string;
+          sale_id: string;
+          service_id: string | null;
+          sort_order: number;
+          staff_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: number;
+          commission_amount: number;
+          commission_percent: number;
+          description: string;
+          discount_share?: number;
+          id?: string;
+          organization_id: string;
+          sale_id: string;
+          service_id?: string | null;
+          sort_order: number;
+          staff_id: string;
+        };
+        Update: {
+          amount?: number;
+          commission_amount?: number;
+          commission_percent?: number;
+          description?: string;
+          discount_share?: number;
+          id?: string;
+          organization_id?: string;
+          sale_id?: string;
+          service_id?: string | null;
+          sort_order?: number;
+          staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sale_items_sale_id_organization_id_fkey";
+            columns: ["sale_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "sale_items_service_id_organization_id_fkey";
+            columns: ["service_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "sale_items_staff_id_organization_id_fkey";
+            columns: ["staff_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "staff";
+            referencedColumns: ["id", "organization_id"];
+          },
+        ];
+      };
+      sale_payments: {
+        Row: {
+          amount: number;
+          id: string;
+          method: Database["public"]["Enums"]["payment_method"];
+          organization_id: string;
+          reference: string | null;
+          sale_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: number;
+          id?: string;
+          method: Database["public"]["Enums"]["payment_method"];
+          organization_id: string;
+          reference?: string | null;
+          sale_id: string;
+        };
+        Update: {
+          amount?: number;
+          id?: string;
+          method?: Database["public"]["Enums"]["payment_method"];
+          organization_id?: string;
+          reference?: string | null;
+          sale_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sale_payments_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sale_payments_sale_id_organization_id_fkey";
+            columns: ["sale_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
+            referencedColumns: ["id", "organization_id"];
+          },
+        ];
+      };
+      sale_tips: {
+        Row: {
+          amount: number;
+          organization_id: string;
+          sale_id: string;
+          staff_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: number;
+          organization_id: string;
+          sale_id: string;
+          staff_id: string;
+        };
+        Update: {
+          amount?: number;
+          organization_id?: string;
+          sale_id?: string;
+          staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sale_tips_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sale_tips_sale_id_organization_id_fkey";
+            columns: ["sale_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "sale_tips_staff_id_organization_id_fkey";
+            columns: ["staff_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "staff";
+            referencedColumns: ["id", "organization_id"];
+          },
+        ];
+      };
+      sales: {
+        Row: {
+          balance_collected: number;
+          booking_id: string;
+          branch_id: string;
+          business_date: string;
+          client_id: string;
+          completed_at: string;
+          completed_by: string;
+          created_at: string;
+          deposit_applied: number;
+          discount_amount: number;
+          id: string;
+          organization_id: string;
+          subtotal: number;
+          tip_amount: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          balance_collected: number;
+          booking_id: string;
+          branch_id: string;
+          business_date: string;
+          client_id: string;
+          completed_at?: string;
+          completed_by: string;
+          created_at?: string;
+          deposit_applied?: number;
+          discount_amount?: number;
+          id?: string;
+          organization_id: string;
+          subtotal: number;
+          tip_amount?: number;
+        };
+        Update: {
+          balance_collected?: number;
+          booking_id?: string;
+          branch_id?: string;
+          business_date?: string;
+          client_id?: string;
+          completed_at?: string;
+          completed_by?: string;
+          created_at?: string;
+          deposit_applied?: number;
+          discount_amount?: number;
+          id?: string;
+          organization_id?: string;
+          subtotal?: number;
+          tip_amount?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sales_booking_id_organization_id_fkey";
+            columns: ["booking_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "bookings";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "sales_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "branch_setup_status";
+            referencedColumns: ["branch_id", "organization_id"];
+          },
+          {
+            foreignKeyName: "sales_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "sales_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "my_branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "sales_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "public_branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "sales_client_id_organization_id_fkey";
+            columns: ["client_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "sales_completed_by_fkey";
+            columns: ["completed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       service_categories: {
         Row: {
           created_at: string;
@@ -1856,6 +2300,25 @@ export type Database = {
       cancel_booking: { Args: { p_booking_id: string; p_reason?: string }; Returns: undefined };
       check_in_booking: { Args: { p_booking_id: string }; Returns: undefined };
       claim_guest_booking: { Args: { p_booking_code: string }; Returns: string };
+      close_day: {
+        Args: {
+          p_branch_id: string;
+          p_business_date: string;
+          p_cash_counted: number;
+          p_cash_float: number;
+        };
+        Returns: string;
+      };
+      complete_checkout: {
+        Args: {
+          p_booking_id: string;
+          p_discount_amount: number;
+          p_items: Json;
+          p_payments: Json;
+          p_tips: Json;
+        };
+        Returns: string;
+      };
       create_branch: {
         Args: {
           p_address: string;
@@ -1986,6 +2449,29 @@ export type Database = {
         }[];
       };
       get_client_notes: { Args: { p_client_id: string }; Returns: string };
+      get_daily_close_summary: {
+        Args: { p_branch_id: string; p_business_date: string };
+        Returns: {
+          cash_counted: number;
+          cash_expected: number;
+          cash_float: number;
+          cash_sales: number;
+          cash_variance: number;
+          closed_at: string;
+          deposits_applied: number;
+          deposits_received: number;
+          discounts: number;
+          fees_collected: number;
+          gross_sales: number;
+          is_closed: boolean;
+          reopened_at: string;
+          sale_count: number;
+          staff: Json;
+          tips: number;
+          totals_by_method: Json;
+          unfinished_visit_count: number;
+        }[];
+      };
       get_invite_preview: {
         Args: { p_code: string };
         Returns: {
@@ -2014,6 +2500,7 @@ export type Database = {
         Returns: undefined;
       };
       remove_member: { Args: { p_member_id: string }; Returns: undefined };
+      reopen_day: { Args: { p_branch_id: string; p_business_date: string }; Returns: undefined };
       reschedule_booking: {
         Args: { p_booking_id: string; p_staff_id: string; p_start_at: string };
         Returns: undefined;

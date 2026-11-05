@@ -40,7 +40,7 @@ export function visitsQueryKey(branchId: string) {
   return ["visits", branchId] as const;
 }
 
-type VisitRow = {
+export type VisitRow = {
   id: string;
   booking_code: string;
   status: BookingStatus;
@@ -57,29 +57,31 @@ type VisitRow = {
   booking_services: { service_id: string; service_name: string; sort_order: number }[];
 };
 
+export function readVisit(row: VisitRow): Visit {
+  const services = [...row.booking_services].sort((first, second) => first.sort_order - second.sort_order);
+  return {
+    id: row.id,
+    bookingCode: row.booking_code,
+    status: row.status,
+    source: row.source,
+    businessDate: row.business_date,
+    startAt: row.start_at,
+    endAt: row.end_at,
+    queueNumber: row.queue_number,
+    staffId: row.staff_id,
+    staffName: row.staff?.display_name ?? null,
+    clientName: row.clients?.full_name ?? "",
+    serviceIds: services.map((service) => service.service_id),
+    serviceNames: services.map((service) => service.service_name),
+    clientNote: row.client_note,
+  };
+}
+
 function readVisits(rows: VisitRow[]): Visit[] {
   const now = Date.now();
   return rows
     .filter((row) => !(row.status === "held" && row.hold_expires_at !== null && new Date(row.hold_expires_at).getTime() <= now))
-    .map((row) => {
-      const services = [...row.booking_services].sort((first, second) => first.sort_order - second.sort_order);
-      return {
-        id: row.id,
-        bookingCode: row.booking_code,
-        status: row.status,
-        source: row.source,
-        businessDate: row.business_date,
-        startAt: row.start_at,
-        endAt: row.end_at,
-        queueNumber: row.queue_number,
-        staffId: row.staff_id,
-        staffName: row.staff?.display_name ?? null,
-        clientName: row.clients?.full_name ?? "",
-        serviceIds: services.map((service) => service.service_id),
-        serviceNames: services.map((service) => service.service_name),
-        clientNote: row.client_note,
-      };
-    });
+    .map(readVisit);
 }
 
 // The branch's current business date, from the shared function (the floor's "today").

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { BookingStatusBadge } from "@/features/booking/BookingStatusBadge";
 import { nextVisitAction } from "@/features/floor/visit-actions";
@@ -7,12 +8,14 @@ import { fillTemplate, messages } from "@/lib/messages";
 
 // Queue number or time, client, services, staff, status, and one next-step button (design brief §5).
 export function QueueCard({
+  branchId,
   visit,
   timeZone,
   isBusy,
   onNext,
   onDetails,
 }: {
+  branchId: string;
   visit: Visit;
   timeZone: string;
   isBusy: boolean;
@@ -37,7 +40,13 @@ export function QueueCard({
         <BookingStatusBadge status={visit.status} />
       </div>
       <div className="flex gap-2">
-        {next ? (
+        {next === "checkout" ? (
+          <Button asChild className="flex-1">
+            <Link to="/shop/$branchId/visit/$bookingId" params={{ branchId, bookingId: visit.id }}>
+              {messages.visit.checkout}
+            </Link>
+          </Button>
+        ) : next ? (
           <Button className="flex-1" disabled={isBusy} onClick={onNext}>
             {next === "check_in" ? messages.floor.checkIn : messages.floor.start}
           </Button>

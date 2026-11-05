@@ -7,7 +7,6 @@ import { FormErrorAlert } from "@/components/FormErrorAlert";
 import { TaskSheet } from "@/components/TaskSheet";
 import { TextField } from "@/components/TextField";
 import { Button } from "@/components/ui/button";
-import type { DepositBooking } from "@/features/deposits/deposit-queries";
 import { messages } from "@/lib/messages";
 import { amountText, textToNumber } from "@/lib/number-field-schemas";
 import { supabase } from "@/lib/supabase-client";
@@ -18,12 +17,23 @@ const refundSchema = z.object({
   note: z.string(),
 });
 
-// A refund settled outside GroomBox, recorded on the booking (DEP-7).
-export function RefundOutcomeSheet({ booking, onClose }: { booking: DepositBooking; onClose: () => void }) {
+// A refund settled outside GroomBox, recorded on the booking (DEP-7): from the deposit list for
+// cancelled and rejected bookings, and from a checked-out visit whose deposit was larger than the bill.
+export function RefundOutcomeSheet({
+  bookingId,
+  clientName,
+  suggestedAmount,
+  onClose,
+}: {
+  bookingId: string;
+  clientName: string;
+  suggestedAmount: number;
+  onClose: () => void;
+}) {
   const record = useMutation({
     mutationFn: async (value: z.infer<typeof refundSchema>) => {
       const { error } = await supabase.rpc("record_refund_outcome", {
-        p_booking_id: booking.id,
+        p_booking_id: bookingId,
         p_refunded: value.refunded,
         p_amount: value.refunded ? textToNumber(value.amount) : 0,
         p_note: value.note.trim() || undefined,
@@ -36,7 +46,7 @@ export function RefundOutcomeSheet({ booking, onClose }: { booking: DepositBooki
     },
   });
   const form = useForm({
-    defaultValues: { refunded: true, amount: booking.depositAmount.toFixed(2), note: "" },
+    defaultValues: { refunded: true, amount: suggestedAmount.toFixed(2), note: "" },
     // Validate on submit, then re-check on every change until the form is fixed.
     validationLogic: revalidateLogic(),
     validators: { onDynamic: refundSchema },
@@ -45,7 +55,7 @@ export function RefundOutcomeSheet({ booking, onClose }: { booking: DepositBooki
     },
   });
   return (
-    <TaskSheet open onOpenChange={(open) => (open ? null : onClose())} title={messages.deposits.refundTitle} description={booking.clientName}>
+    <TaskSheet open onOpenChange={(open) => (open ? null : onClose())} title={messages.deposits.refundTitle} description={clientName}>
       <form
         noValidate
         className="flex flex-col gap-4"

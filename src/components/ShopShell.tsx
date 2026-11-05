@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { Bell, CalendarDays, Contact, LayoutList, LogOut, Menu, Settings, SlidersHorizontal, Users, Wallet, type LucideIcon } from "lucide-react";
+import { Bell, CalendarDays, Contact, LayoutList, LockKeyhole, LogOut, Menu, Settings, SlidersHorizontal, Users, Wallet, type LucideIcon } from "lucide-react";
 import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { GroomBoxLogo } from "@/components/GroomBoxLogo";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,12 @@ type NavigationItem = {
   icon: LucideIcon;
   link:
     | {
-        to: "/shop/$branchId/floor" | "/shop/$branchId/calendar" | "/shop/$branchId/setup" | "/shop/$branchId/deposits";
+        to:
+          | "/shop/$branchId/floor"
+          | "/shop/$branchId/calendar"
+          | "/shop/$branchId/setup"
+          | "/shop/$branchId/deposits"
+          | "/shop/$branchId/close";
         params: { branchId: string };
       }
     | { to: "/shop/team" | "/shop/notifications" | "/shop/setup" | "/shop/clients" };
@@ -96,6 +101,13 @@ export function ShopShell({
     items.push({ key: "clients", label: messages.shop.clients, icon: Contact, link: { to: "/shop/clients" }, inBottomBar: true });
   }
   if (isActive && activeBranchId && currentMembership.role !== "staff") {
+    items.push({
+      key: "daily-close",
+      label: messages.shop.dailyClose,
+      icon: LockKeyhole,
+      link: { to: "/shop/$branchId/close", params: { branchId: activeBranchId } },
+      inBottomBar: false,
+    });
     items.push({
       key: "branch-setup",
       label: messages.shop.branchSetup,

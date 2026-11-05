@@ -22,6 +22,8 @@ const databaseErrorMessages: Record<string, string> = {
   GBF01: messages.errors.staffBusy,
   GBF02: messages.errors.visitStatusChanged,
   GBC01: messages.errors.clientsLinkedToDifferentAccounts,
+  GBD01: messages.errors.businessDayClosed,
+  GBD02: messages.errors.unfinishedVisits,
   "42501": messages.errors.notPermitted,
   "23503": messages.errors.stillInUse,
   "23505": messages.errors.alreadyTaken,

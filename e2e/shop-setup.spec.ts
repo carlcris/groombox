@@ -1,16 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { createOwnerWithShop, signIn } from "./account-steps";
+import { createOwnerWithShop, pixelImage, signIn } from "./account-steps";
 
 // Phase 2 exit criteria: an owner takes a new organization from empty to a published branch using
 // only the app; the setup screen will not publish while a required item is missing, or remove the
 // last required item from a published branch; a manager changes their own branch's hours,
 // offerings, and shifts, but not the catalogue, payment details, or another branch.
-
-// A 1 × 1 PNG, standing in for a payment QR image.
-const qrImage = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC",
-  "base64",
-);
 
 const havenBgcBranchId = "30000000-0000-0000-0000-000000000002";
 const havenMakatiBranchId = "30000000-0000-0000-0000-000000000001";
@@ -61,7 +55,7 @@ test("an owner takes a new organization from empty to a published branch", async
   const paymentSheet = page.getByRole("dialog");
   await paymentSheet.getByLabel("Account name").fill("Nara Salon");
   await paymentSheet.getByLabel("Account number").fill("0917 123 4567");
-  await paymentSheet.locator('input[type="file"]').setInputFiles({ name: "qr.png", mimeType: "image/png", buffer: qrImage });
+  await paymentSheet.locator('input[type="file"]').setInputFiles({ name: "qr.png", mimeType: "image/png", buffer: pixelImage });
   await expect(paymentSheet.getByRole("img", { name: "QR image" })).toBeVisible();
   await paymentSheet.getByRole("button", { name: "Save" }).click();
   await expect(paymentSheet).toBeHidden();

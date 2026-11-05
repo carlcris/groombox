@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { firstFieldError } from "@/components/FormField";
 import { FormErrorAlert } from "@/components/FormErrorAlert";
 import { TaskSheet } from "@/components/TaskSheet";
@@ -227,6 +228,13 @@ export function VisitSheet({
           </dl>
           <FormErrorAlert error={pendingError} />
           <div className="flex flex-col gap-3">
+            {visit.status === "in_service" ? (
+              <Button asChild>
+                <Link to="/shop/$branchId/visit/$bookingId" params={{ branchId: branch.id, bookingId: visit.id }} onClick={onClose}>
+                  {messages.visit.checkout}
+                </Link>
+              </Button>
+            ) : null}
             {actions.includes("check_in") ? (
               <Button disabled={checkIn.isPending} onClick={() => checkIn.mutateAsync(visit.id).then(onClose, () => undefined)}>
                 {messages.floor.checkIn}
@@ -259,6 +267,11 @@ export function VisitSheet({
                 {messages.floor.cancelVisit}
               </Button>
             ) : null}
+            <Button asChild variant="ghost">
+              <Link to="/shop/$branchId/visit/$bookingId" params={{ branchId: branch.id, bookingId: visit.id }} onClick={onClose}>
+                {messages.visit.open}
+              </Link>
+            </Button>
           </div>
         </div>
       )}

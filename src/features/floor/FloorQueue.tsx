@@ -88,6 +88,7 @@ export function FloorQueue({ branch, visits }: { branch: WorkBranch; visits: Vis
                   {tabVisits.map((visit) => (
                     <QueueCard
                       key={visit.id}
+                      branchId={branch.id}
                       visit={visit}
                       timeZone={branch.timezone}
                       isBusy={checkIn.isPending || start.isPending}

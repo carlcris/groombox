@@ -9,7 +9,8 @@
 --     or answers a guest, another branch's member, or a restricted organization's member.
 --  2. Staff read client notes, directly or through get_client_notes.
 --  3. Walk-ins get a repeated queue number, a deposit or fee, or a client record in another
---     organization; a failure after the client record leaves it behind.
+--     organization; a failure after the client record leaves it behind; the member who added one
+--     cannot cancel it when the client leaves.
 --  4. Starting a walk-in double-books the staff member, or a status move runs from the wrong status.
 --  5. A staff-entered appointment carries a deposit or fee, or overlaps another booking.
 --  6. Rescheduling changes the booking's length, keeps the old business date, overlaps another
@@ -19,7 +20,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(48);
+select plan(50);
 
 create temporary table fixture (key text primary key, id uuid not null);
 grant select, insert on fixture to authenticated;
@@ -235,6 +236,23 @@ select is(
   'the failed walk-in leaves no client record behind'
 );
 drop trigger forced_failure on public.booking_services;
+
+-- The staff member who entered a walk-in cancels it as the shop when the client leaves before
+-- starting; it never had a staff member or time.
+set local role authenticated;
+select pg_temp.act_as(pg_temp.fixture_id('makati_staff'), false);
+insert into fixture select 'walk_in_leaving', public.add_walk_in(pg_temp.fixture_id('makati'), array[pg_temp.fixture_id('haircut')],
+  null, 'Lee Leaving');
+select lives_ok(
+  $$ select public.cancel_booking(pg_temp.fixture_id('walk_in_leaving'), 'Could not wait') $$,
+  'the staff member who added a waiting walk-in cancels it'
+);
+reset role;
+select results_eq(
+  $$ select status::text, cancellation_metadata ->> 'by', staff_id, start_at from public.bookings where id = pg_temp.fixture_id('walk_in_leaving') $$,
+  $$ values ('cancelled', 'shop', null::uuid, null::timestamptz) $$,
+  'it is cancelled by the shop, with no staff member or time'
+);
 
 -- ---------------------------------------------------------------------------
 -- 4. Starting service, checking in, no-shows

@@ -28,6 +28,7 @@ import { Route as ShopTeamRouteImport } from './routes/shop/team'
 import { Route as BBranchSlugIndexRouteImport } from './routes/b.$branchSlug.index'
 import { Route as BBranchSlugBookRouteImport } from './routes/b.$branchSlug.book'
 import { Route as ShopBranchIdCalendarRouteImport } from './routes/shop/$branchId/calendar'
+import { Route as ShopBranchIdCloseRouteImport } from './routes/shop/$branchId/close'
 import { Route as ShopBranchIdDepositsRouteImport } from './routes/shop/$branchId/deposits'
 import { Route as ShopBranchIdFloorRouteImport } from './routes/shop/$branchId/floor'
 import { Route as ShopBranchIdSetupRouteImport } from './routes/shop/$branchId/setup'
@@ -39,6 +40,7 @@ import { Route as ShopSetupOrganizationRouteImport } from './routes/shop/setup/o
 import { Route as ShopSetupPoliciesRouteImport } from './routes/shop/setup/policies'
 import { Route as ShopSetupServicesRouteImport } from './routes/shop/setup/services'
 import { Route as ShopSetupStaffRouteImport } from './routes/shop/setup/staff'
+import { Route as ShopBranchIdVisitBookingIdRouteImport } from './routes/shop/$branchId/visit.$bookingId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -135,6 +137,11 @@ const ShopBranchIdCalendarRoute = ShopBranchIdCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => ShopBranchIdRoute,
 } as any)
+const ShopBranchIdCloseRoute = ShopBranchIdCloseRouteImport.update({
+  id: '/close',
+  path: '/close',
+  getParentRoute: () => ShopBranchIdRoute,
+} as any)
 const ShopBranchIdDepositsRoute = ShopBranchIdDepositsRouteImport.update({
   id: '/deposits',
   path: '/deposits',
@@ -190,6 +197,12 @@ const ShopSetupStaffRoute = ShopSetupStaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => ShopSetupRoute,
 } as any)
+const ShopBranchIdVisitBookingIdRoute =
+  ShopBranchIdVisitBookingIdRouteImport.update({
+    id: '/visit/$bookingId',
+    path: '/visit/$bookingId',
+    getParentRoute: () => ShopBranchIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -210,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/shop/': typeof ShopIndexRoute
   '/b/$branchSlug/book': typeof BBranchSlugBookRoute
   '/shop/$branchId/calendar': typeof ShopBranchIdCalendarRoute
+  '/shop/$branchId/close': typeof ShopBranchIdCloseRoute
   '/shop/$branchId/deposits': typeof ShopBranchIdDepositsRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
@@ -222,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/b/$branchSlug/': typeof BBranchSlugIndexRoute
   '/shop/clients/': typeof ShopClientsIndexRoute
   '/shop/setup/': typeof ShopSetupIndexRoute
+  '/shop/$branchId/visit/$bookingId': typeof ShopBranchIdVisitBookingIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -238,6 +253,7 @@ export interface FileRoutesByTo {
   '/shop': typeof ShopIndexRoute
   '/b/$branchSlug/book': typeof BBranchSlugBookRoute
   '/shop/$branchId/calendar': typeof ShopBranchIdCalendarRoute
+  '/shop/$branchId/close': typeof ShopBranchIdCloseRoute
   '/shop/$branchId/deposits': typeof ShopBranchIdDepositsRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
@@ -250,6 +266,7 @@ export interface FileRoutesByTo {
   '/b/$branchSlug': typeof BBranchSlugIndexRoute
   '/shop/clients': typeof ShopClientsIndexRoute
   '/shop/setup': typeof ShopSetupIndexRoute
+  '/shop/$branchId/visit/$bookingId': typeof ShopBranchIdVisitBookingIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -271,6 +288,7 @@ export interface FileRoutesById {
   '/shop/': typeof ShopIndexRoute
   '/b/$branchSlug/book': typeof BBranchSlugBookRoute
   '/shop/$branchId/calendar': typeof ShopBranchIdCalendarRoute
+  '/shop/$branchId/close': typeof ShopBranchIdCloseRoute
   '/shop/$branchId/deposits': typeof ShopBranchIdDepositsRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
@@ -283,6 +301,7 @@ export interface FileRoutesById {
   '/b/$branchSlug/': typeof BBranchSlugIndexRoute
   '/shop/clients/': typeof ShopClientsIndexRoute
   '/shop/setup/': typeof ShopSetupIndexRoute
+  '/shop/$branchId/visit/$bookingId': typeof ShopBranchIdVisitBookingIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -305,6 +324,7 @@ export interface FileRouteTypes {
     | '/shop/'
     | '/b/$branchSlug/book'
     | '/shop/$branchId/calendar'
+    | '/shop/$branchId/close'
     | '/shop/$branchId/deposits'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
@@ -317,6 +337,7 @@ export interface FileRouteTypes {
     | '/b/$branchSlug/'
     | '/shop/clients/'
     | '/shop/setup/'
+    | '/shop/$branchId/visit/$bookingId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -333,6 +354,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/b/$branchSlug/book'
     | '/shop/$branchId/calendar'
+    | '/shop/$branchId/close'
     | '/shop/$branchId/deposits'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
@@ -345,6 +367,7 @@ export interface FileRouteTypes {
     | '/b/$branchSlug'
     | '/shop/clients'
     | '/shop/setup'
+    | '/shop/$branchId/visit/$bookingId'
   id:
     | '__root__'
     | '/'
@@ -365,6 +388,7 @@ export interface FileRouteTypes {
     | '/shop/'
     | '/b/$branchSlug/book'
     | '/shop/$branchId/calendar'
+    | '/shop/$branchId/close'
     | '/shop/$branchId/deposits'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
@@ -377,6 +401,7 @@ export interface FileRouteTypes {
     | '/b/$branchSlug/'
     | '/shop/clients/'
     | '/shop/setup/'
+    | '/shop/$branchId/visit/$bookingId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -526,6 +551,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopBranchIdCalendarRouteImport
       parentRoute: typeof ShopBranchIdRoute
     }
+    '/shop/$branchId/close': {
+      id: '/shop/$branchId/close'
+      path: '/close'
+      fullPath: '/shop/$branchId/close'
+      preLoaderRoute: typeof ShopBranchIdCloseRouteImport
+      parentRoute: typeof ShopBranchIdRoute
+    }
     '/shop/$branchId/deposits': {
       id: '/shop/$branchId/deposits'
       path: '/deposits'
@@ -603,21 +635,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopSetupStaffRouteImport
       parentRoute: typeof ShopSetupRoute
     }
+    '/shop/$branchId/visit/$bookingId': {
+      id: '/shop/$branchId/visit/$bookingId'
+      path: '/visit/$bookingId'
+      fullPath: '/shop/$branchId/visit/$bookingId'
+      preLoaderRoute: typeof ShopBranchIdVisitBookingIdRouteImport
+      parentRoute: typeof ShopBranchIdRoute
+    }
   }
 }
 
 interface ShopBranchIdRouteChildren {
   ShopBranchIdCalendarRoute: typeof ShopBranchIdCalendarRoute
+  ShopBranchIdCloseRoute: typeof ShopBranchIdCloseRoute
   ShopBranchIdDepositsRoute: typeof ShopBranchIdDepositsRoute
   ShopBranchIdFloorRoute: typeof ShopBranchIdFloorRoute
   ShopBranchIdSetupRoute: typeof ShopBranchIdSetupRoute
+  ShopBranchIdVisitBookingIdRoute: typeof ShopBranchIdVisitBookingIdRoute
 }
 
 const ShopBranchIdRouteChildren: ShopBranchIdRouteChildren = {
   ShopBranchIdCalendarRoute: ShopBranchIdCalendarRoute,
+  ShopBranchIdCloseRoute: ShopBranchIdCloseRoute,
   ShopBranchIdDepositsRoute: ShopBranchIdDepositsRoute,
   ShopBranchIdFloorRoute: ShopBranchIdFloorRoute,
   ShopBranchIdSetupRoute: ShopBranchIdSetupRoute,
+  ShopBranchIdVisitBookingIdRoute: ShopBranchIdVisitBookingIdRoute,
 }
 
 const ShopBranchIdRouteWithChildren = ShopBranchIdRoute._addFileChildren(

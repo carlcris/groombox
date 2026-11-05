@@ -186,7 +186,14 @@ function DepositsPage() {
       {openSheet?.kind === "review" ? (
         <DepositReviewSheet booking={openSheet.booking} timeZone={branch.timezone} onClose={() => setOpenSheet(null)} />
       ) : null}
-      {openSheet?.kind === "refund" ? <RefundOutcomeSheet booking={openSheet.booking} onClose={() => setOpenSheet(null)} /> : null}
+      {openSheet?.kind === "refund" ? (
+        <RefundOutcomeSheet
+          bookingId={openSheet.booking.id}
+          clientName={openSheet.booking.clientName}
+          suggestedAmount={openSheet.booking.depositAmount}
+          onClose={() => setOpenSheet(null)}
+        />
+      ) : null}
     </div>
   );
 }

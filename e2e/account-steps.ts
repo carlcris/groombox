@@ -6,6 +6,12 @@ export function uniqueEmail(role: string): string {
   return `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@e2e.test`;
 }
 
+// A 1 × 1 PNG, standing in for an uploaded image such as a payment QR code.
+export const pixelImage = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC",
+  "base64",
+);
+
 // The password of every account the tests sign up.
 export const signedUpPassword = "groombox-e2e";
 
@@ -67,4 +73,38 @@ export async function addServiceAndStaff(page: Page, serviceName: string, staffN
   await staffSheet.getByRole("checkbox", { name: serviceName }).check();
   await staffSheet.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText(staffName, { exact: true })).toBeVisible();
+}
+
+// Signs up a new owner and publishes their one branch: terms, a ₱400 service and its staff member
+// with a Monday shift, and GCash payment details. Returns the branch id, the owner's email, and the
+// branch's slug (the shop and branch names, slugified; callers make the shop name unique).
+export async function publishNewShop(
+  page: Page,
+  shopName: string,
+  branchName: string,
+  serviceName: string,
+  staffName: string,
+): Promise<{ branchId: string; email: string; slug: string }> {
+  const { branchId, email } = await createOwnerWithShop(page, shopName, branchName);
+  await page.goto("/shop/setup/policies");
+  await page.getByRole("button", { name: "Accept the terms" }).click();
+  await expect(page.getByText(/You accepted the terms on/)).toBeVisible();
+  await addServiceAndStaff(page, serviceName, staffName);
+  await page.goto(`/shop/${branchId}/setup`);
+  await page.getByRole("checkbox", { name: serviceName }).click();
+  await expect(page.getByRole("checkbox", { name: serviceName })).toBeChecked();
+  await page.getByRole("button", { name: "Add shift" }).click();
+  await expect(page.getByText("Monday 10:00 AM – 7:00 PM")).toBeVisible();
+  await page.goto("/shop/setup/branches");
+  await page.getByRole("button", { name: "Payment details" }).click();
+  const paymentSheet = page.getByRole("dialog");
+  await paymentSheet.getByLabel("Account name").fill(shopName);
+  await paymentSheet.getByLabel("Account number").fill("0917 765 4321");
+  await paymentSheet.locator('input[type="file"]').setInputFiles({ name: "qr.png", mimeType: "image/png", buffer: pixelImage });
+  await expect(paymentSheet.getByRole("img", { name: "QR image" })).toBeVisible();
+  await paymentSheet.getByRole("button", { name: "Save" }).click();
+  await expect(paymentSheet).toBeHidden();
+  await page.getByRole("button", { name: "Publish" }).click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+  return { branchId, email, slug: `${shopName} ${branchName}`.toLowerCase().replace(/[^a-z0-9]+/g, "-") };
 }

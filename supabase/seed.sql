@@ -19,8 +19,9 @@
 -- midnight; at Makati a guest's held and expired holds, a client's cancelled booking, and bookings
 -- in every deposit review status, and today's floor (a waiting walk-in, an arrived appointment, a
 -- walk-in in service), yesterday's no-show, and tomorrow's appointment; and a confirmed booking at the
--- restricted Kanto Barbers. Payment proofs cover every status, and each accepted deposit has its fee
--- entry. Phase 6 adds completed sales and phase 8 statements (docs/backend-schema.md §15).
+-- restricted Kanto Barbers; and yesterday at Makati, two completed sales and the closed day.
+-- Payment proofs cover every status, and each accepted deposit has its fee entry. Phase 8 adds
+-- statements (docs/backend-schema.md §15).
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -462,3 +463,119 @@ from unnest(array[
   '80000000-0000-0000-0000-000000000010', '80000000-0000-0000-0000-000000000011', '80000000-0000-0000-0000-000000000012',
   '80000000-0000-0000-0000-000000000013', '80000000-0000-0000-0000-000000000014'
 ]::uuid[]) as booking (id);
+
+-- Yesterday at Makati: Rico's walk-in haircut with Jenny, paid in cash with a ₱50 tip; and Bea's
+-- online hair color and haircut with Carlo, with a ₱285 discount, a ₱100 tip, and her ₱600 deposit
+-- applied, the balance paid by GCash. The day is closed with a ₱1,000 float and the cash counted
+-- exactly. Commission: Jenny's 40% default; Carlo's 50% override on hair color and 45% default on
+-- the haircut, each after its discount share.
+insert into public.bookings (
+  id, organization_id, branch_id, client_id, booked_by, staff_id, source, status, start_at, end_at, business_date,
+  service_total, deposit_amount, convenience_fee, amount_due, queue_number, payment_instructions_snapshot,
+  policy_acceptance_metadata, hold_expires_at, review_expires_at, checked_in_at, started_at, completed_at
+)
+select
+  seeded.id, '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', seeded.client_id,
+  seeded.booked_by, seeded.staff_id, seeded.source::public.booking_source, 'completed', seeded.start_at,
+  seeded.start_at + make_interval(mins => seeded.length_minutes), manila.today - 1, seeded.service_total, seeded.deposit,
+  seeded.fee, seeded.deposit + seeded.fee, seeded.queue_number, seeded.payment_instructions, seeded.policy, seeded.hold_expires_at,
+  seeded.review_expires_at, seeded.checked_in_at, seeded.start_at, seeded.start_at + make_interval(mins => seeded.length_minutes)
+from (select private.business_date(now(), 'Asia/Manila', '05:00') as today) as manila
+cross join lateral (
+  values
+    ('80000000-0000-0000-0000-000000000015'::uuid, '90000000-0000-0000-0000-000000000004'::uuid,
+     '10000000-0000-0000-0000-000000000004'::uuid, '70000000-0000-0000-0000-000000000001'::uuid, 'walk_in',
+     (manila.today - 1 + time '11:00') at time zone 'Asia/Manila', 45, 350.00, 0.00, 0.00, 1::smallint, null::jsonb,
+     null::jsonb, null::timestamptz, null::timestamptz, null::timestamptz),
+    ('80000000-0000-0000-0000-000000000016', '90000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000007',
+     '70000000-0000-0000-0000-000000000002', 'online', (manila.today - 1 + time '13:00') at time zone 'Asia/Manila', 180,
+     2850.00, 600.00, 50.00, null,
+     (select b.payment_instructions from public.branches b where b.id = '30000000-0000-0000-0000-000000000001'),
+     jsonb_build_object('cancellation_policy', 'Cancel at least 24 hours ahead for a full deposit refund.',
+       'privacy_notice_version', '2026-11-05', 'accepted_at', now() - interval '3 days'),
+     now() - interval '3 days' + interval '15 minutes', now() - interval '3 days' + interval '12 hours',
+     (manila.today - 1 + time '12:55') at time zone 'Asia/Manila')
+) as seeded (
+  id, client_id, booked_by, staff_id, source, start_at, length_minutes, service_total, deposit, fee, queue_number,
+  payment_instructions, policy, hold_expires_at, review_expires_at, checked_in_at
+);
+
+insert into public.booking_services (
+  booking_id, organization_id, service_id, service_name, duration_minutes, buffer_minutes, price, sort_order
+)
+values
+  ('80000000-0000-0000-0000-000000000015', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
+   'Haircut', 45, 0, 350.00, 1),
+  ('80000000-0000-0000-0000-000000000016', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000004',
+   'Hair color', 120, 15, 2500.00, 1),
+  ('80000000-0000-0000-0000-000000000016', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
+   'Haircut', 45, 0, 350.00, 2);
+
+insert into public.payment_proofs (
+  booking_id, organization_id, branch_id, submitted_by, reference_number, amount_paid, method, status, reviewed_by,
+  reviewed_at, created_at
+)
+values ('80000000-0000-0000-0000-000000000016', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000007', 'GC-3300-6501', 650.00, 'gcash', 'accepted', '10000000-0000-0000-0000-000000000002',
+  now() - interval '3 days' + interval '1 hour', now() - interval '3 days' + interval '10 minutes');
+
+insert into public.fee_entries (organization_id, branch_id, kind, booking_id, amount, accrued_at, created_by)
+values ('20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'booking_fee',
+  '80000000-0000-0000-0000-000000000016', 50.00, now() - interval '3 days' + interval '1 hour', '10000000-0000-0000-0000-000000000002');
+
+insert into public.sales (
+  id, organization_id, branch_id, booking_id, client_id, business_date, subtotal, discount_amount, tip_amount,
+  deposit_applied, balance_collected, completed_by, completed_at
+)
+select seeded.id, '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', seeded.booking_id,
+  seeded.client_id, private.business_date(now(), 'Asia/Manila', '05:00') - 1, seeded.subtotal, seeded.discount, seeded.tip,
+  seeded.deposit_applied, seeded.subtotal - seeded.discount + seeded.tip - seeded.deposit_applied, seeded.completed_by,
+  b.completed_at
+from (
+  values
+    ('a1000000-0000-0000-0000-000000000001'::uuid, '80000000-0000-0000-0000-000000000015'::uuid,
+     '90000000-0000-0000-0000-000000000004'::uuid, 350.00, 0.00, 50.00, 0.00, '10000000-0000-0000-0000-000000000004'::uuid),
+    ('a1000000-0000-0000-0000-000000000002', '80000000-0000-0000-0000-000000000016', '90000000-0000-0000-0000-000000000001',
+     2850.00, 285.00, 100.00, 600.00, '10000000-0000-0000-0000-000000000004')
+) as seeded (id, booking_id, client_id, subtotal, discount, tip, deposit_applied, completed_by)
+join public.bookings b on b.id = seeded.booking_id;
+
+insert into public.sale_items (
+  sale_id, organization_id, service_id, description, staff_id, amount, discount_share, commission_percent,
+  commission_amount, sort_order
+)
+values
+  ('a1000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
+   'Haircut', '70000000-0000-0000-0000-000000000001', 350.00, 0.00, 40.00, 140.00, 1),
+  ('a1000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000004',
+   'Hair color', '70000000-0000-0000-0000-000000000002', 2500.00, 250.00, 50.00, 1125.00, 1),
+  ('a1000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
+   'Haircut', '70000000-0000-0000-0000-000000000002', 350.00, 35.00, 45.00, 141.75, 2);
+
+insert into public.sale_tips (sale_id, staff_id, organization_id, amount)
+values
+  ('a1000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 50.00),
+  ('a1000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', 100.00);
+
+insert into public.sale_payments (sale_id, organization_id, method, amount, reference)
+values
+  ('a1000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'cash', 400.00, null),
+  ('a1000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', 'gcash', 2065.00, 'GC-3301-0002');
+
+insert into public.daily_closes (
+  id, organization_id, branch_id, business_date, gross_sales, discounts, tips, deposits_applied, deposits_received,
+  fees_collected, totals_by_method, cash_float, cash_expected, cash_counted, cash_variance, closed_by, closed_at
+)
+values ('a2000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
+  private.business_date(now(), 'Asia/Manila', '05:00') - 1, 3200.00, 285.00, 150.00, 600.00, 0.00, 0.00,
+  '{"cash": 400.00, "gcash": 2065.00}', 1000.00, 1400.00, 1400.00, 0.00, '10000000-0000-0000-0000-000000000002',
+  now() - interval '10 hours');
+
+insert into public.daily_close_staff (
+  daily_close_id, staff_id, organization_id, service_revenue, commission_amount, tip_amount, visit_count
+)
+values
+  ('a2000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001',
+   2565.00, 1266.75, 100.00, 1),
+  ('a2000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
+   350.00, 140.00, 50.00, 1);

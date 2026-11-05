@@ -409,7 +409,8 @@ select ok(
 select results_eq(
   $$ select recipient_user_id from public.notifications where entity_id = pg_temp.fixture_id('booking_d') and type = 'review_expired'
      order by recipient_user_id $$,
-  $$ values ('10000000-0000-0000-0000-000000000002'::uuid), ('10000000-0000-0000-0000-000000000004'::uuid), (pg_temp.fixture_id('guest_d')) $$,
+  $$ select recipient from unnest(array['10000000-0000-0000-0000-000000000002'::uuid, '10000000-0000-0000-0000-000000000004'::uuid,
+       pg_temp.fixture_id('guest_d')]) as recipient order by recipient $$,
   'the client and the deposit reviewers are told'
 );
 select ok(

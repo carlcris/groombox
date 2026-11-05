@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarX, Merge, Pencil, UserCheck } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeading } from "@/components/PageHeading";
@@ -81,7 +81,12 @@ function ClientPage() {
           <>
             <ul className="flex flex-col divide-y rounded-xl border bg-card shadow-sm">
               {visits.data.visits.map((visit) => (
-                <li key={visit.id} className="flex flex-col gap-1 px-4 py-3 md:flex-row md:items-center md:justify-between">
+                <li key={visit.id}>
+                  <Link
+                    to="/shop/$branchId/visit/$bookingId"
+                    params={{ branchId: visit.branchId, bookingId: visit.id }}
+                    className="flex min-h-11 flex-col gap-1 px-4 py-3 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring md:flex-row md:items-center md:justify-between"
+                  >
                   <span className="flex flex-col">
                     <span className="font-medium tabular-nums">
                       {visit.startAt ? formatDateTime(visit.startAt, visit.branchTimezone) : formatBusinessDate(visit.businessDate)}
@@ -91,6 +96,7 @@ function ClientPage() {
                     </span>
                   </span>
                   <BookingStatusBadge status={visit.status} />
+                  </Link>
                 </li>
               ))}
             </ul>

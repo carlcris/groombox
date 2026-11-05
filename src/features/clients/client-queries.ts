@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase-client";
 export type ClientSummary = { id: string; fullName: string; mobileNumber: string | null; hasAccount: boolean };
 export type ClientVisit = {
   id: string;
+  branchId: string;
   status: BookingStatus;
   startAt: string | null;
   businessDate: string;
@@ -82,7 +83,7 @@ export function clientVisitsQueryOptions(organizationId: string, clientId: strin
       const from = page * clientPageSize;
       const { data, error, count } = await supabase
         .from("bookings")
-        .select("id, status, start_at, business_date, branches(name, timezone), booking_services(service_name, sort_order)", {
+        .select("id, branch_id, status, start_at, business_date, branches(name, timezone), booking_services(service_name, sort_order)", {
           count: "exact",
         })
         .eq("client_id", clientId)
@@ -94,6 +95,7 @@ export function clientVisitsQueryOptions(organizationId: string, clientId: strin
       return {
         visits: data.map((row) => ({
           id: row.id,
+          branchId: row.branch_id,
           status: row.status,
           startAt: row.start_at,
           businessDate: row.business_date,
