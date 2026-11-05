@@ -14,14 +14,14 @@ This is the design the first migrations are written from. Exact SQL lives in `su
 - Money is `numeric(20,2)`. Percentages are `numeric(5,2)`.
 - Every calculated amount is rounded to the centavo, half away from zero (Postgres `round(x, 2)`). This applies to each service's deposit, the fee before its minimum and maximum, each item's discount share, and each commission.
 - Time ranges are half-open, `[start_at, end_at)`.
-- **Business date**: a moment's business date at a branch is its local date after subtracting the branch's `business_day_start`. With the default 5:00 AM start, a sale at 1:30 AM on Sunday belongs to Saturday. Sales, booking business dates, queue numbers, the daily close, the floor view's "today", and "fewest booked minutes that day" all use one shared SQL function for this.
+- **Business date**: a moment's business date at a branch is its local date after subtracting the branch's `business_day_start`. With the default 5:00 AM start, a sale at 1:30 AM on Sunday belongs to Saturday. Sales, booking business dates, queue numbers, the daily close, the floor view's "today", and "fewest booked minutes that day" all use one shared SQL function for this, `private.business_date(at, timezone, business_day_start)`.
 - Status columns are Postgres enums.
 - Generated codes (`booking_code`, `statement_code`) are made by the database with the shared generator and a `BEFORE INSERT` trigger; inserts omit them.
-  - `booking_code` is 12 random characters from Crockford's base32 alphabet (no I, L, O, or U), shown in groups of four, for example `7K2M-QX9D-4HTB`. The booking link carries it and anyone holding it can open the booking (`get_booking_by_code`), so it must be unguessable.
+  - `booking_code` is 12 random characters from Crockford's base32 alphabet (no I, L, O, or U), shown in groups of four, for example `7K2M-QX9D-4HTB`. The booking link carries it and anyone holding it can open the booking (`get_booking_by_code`), so it must be unguessable. It is stored without dashes; the functions that take a code ignore dashes, spaces, and case, and read I and L as 1 and O as 0.
   - `statement_code` is short and readable, because only the owner and platform admins see it.
 - Snapshots and loosely structured metadata are `jsonb`.
 - Internal helpers (row-level security lookups, logging, code and slug generators) live in schema `private`, which PostgREST does not expose.
-- Functions raise coded errors with SQLSTATE class `GB`, and the app maps each code to a safe message: `GBA01` sign-in required, `GBA02` not permitted, `GBI01` invite unavailable, `GBI02` already a member, `GBM01` owner membership locked. Later phases add their codes here.
+- Functions raise coded errors with SQLSTATE class `GB`, and the app maps each code to a safe message: `GBA01` sign-in required, `GBA02` not permitted, `GBI01` invite unavailable, `GBI02` already a member, `GBM01` owner membership locked, `GBB01` hold limit reached (two unexpired holds), `GBB02` branch not taking bookings, `GBB03` slot unavailable (taken, off the slot grid, or no longer offered), `GBB04` booking not cancellable now, `GBB05` booking not claimable (made by an account). Later phases add their codes here.
 - Row-level security is enabled on every table. No table is readable or writable without a policy.
 - Tables that accept direct single-row writes under row-level security have an `AFTER` trigger that writes the `activity_logs` row: `profiles`, `organizations`, `branches`, `branch_hours`, `branch_closures`, `branch_media`, `branch_services`, `service_categories`, `services`, `staff`, `staff_branches`, `staff_services`, `staff_shifts`, `staff_time_off`, `clients`, and `platform_settings`. The shared trigger function runs with the caller's rights and logs only writes made directly by an app role (`authenticated` or `anon`); it writes through `private.log_activity`, which is `SECURITY DEFINER` because callers cannot insert into `activity_logs` themselves. It records only the actor, table, row id, action, and allow-listed changed column names. Database functions run as `SECURITY DEFINER` and write their own activity row, so the trigger skips their writes and nothing is logged twice. `notifications.read_at` updates are not logged. A new directly writable table gets the trigger in the same migration.
 
@@ -258,6 +258,8 @@ Index on `(user_id, organization_id)` where `is_active`, to support policy looku
 | `notes` | `text` | Private to the organization |
 | `created_at`, `updated_at` | | |
 
+`create_online_booking` upserts the record on `(organization_id, user_id)`, updating the name and mobile number to the latest booking's. Owners and managers may also add and edit records directly (name, mobile number, notes); the audit trigger logs those writes.
+
 ## 7. Bookings
 
 ### `bookings`
@@ -307,7 +309,8 @@ Constraints and indexes:
   ```
 
   Requires the `btree_gist` extension. Expired holds are moved to `hold_expired` by the create-booking function before it inserts, so they do not trip the constraint.
-- Check: `end_at > start_at`; `amount_due = deposit_amount + convenience_fee`.
+- Checks: `end_at > start_at`; `start_at` and `end_at` both set or both null; `staff_id` and `start_at` set unless `waiting`; `hold_expires_at` set while `held`; `amount_due = deposit_amount + convenience_fee`; `deposit_amount > 0` for `online`.
+- Foreign keys: `(branch_id, organization_id)`, `(client_id, organization_id)`, and `(staff_id, organization_id)` against their parents; `booked_by` references `profiles`.
 - Indexes: `(branch_id, start_at)`, `(branch_id, business_date)`, `(staff_id, start_at)`, `(booked_by, start_at desc)`, `(organization_id, client_id)`, and partial indexes on `hold_expires_at` and `review_expires_at` for the statuses the jobs scan.
 - A booking can cross midnight. Its range is stored as `timestamptz`, so nothing special is needed beyond the business date rule.
 
@@ -317,11 +320,13 @@ Constraints and indexes:
 |---|---|---|
 | `id` | `uuid` PK | |
 | `booking_id`, `organization_id` | `uuid` | |
-| `service_id` | `uuid` | |
+| `service_id` | `uuid` | `(service_id, organization_id)` references `services` |
 | `service_name` | `text` | Snapshot |
 | `duration_minutes`, `buffer_minutes` | `smallint` | Snapshot |
 | `price` | `numeric(20,2)` | Snapshot |
-| `sort_order` | `smallint` | |
+| `sort_order` | `smallint` | The order the client chose the services in |
+
+`(booking_id, organization_id)` references `bookings`.
 
 ### `payment_proofs`
 
@@ -460,9 +465,9 @@ A branch's **deposit reviewers** are the owner, the managers assigned to the bra
 
 | View | Audience | Exposes |
 |---|---|---|
-| `public_branches` | Anyone, including guests | Published, active branches: name, slug, address, hours, media, organization name, slug, and logo (the organization slug serves `/o/:orgSlug`) |
-| `public_branch_services` | Anyone | Offered services with effective price and duration |
-| `public_branch_staff` | Anyone | Bookable staff: display name, title, photo, services |
+| `public_branches` | Anyone, including visitors without a session | Published, active branches, including those of restricted organizations: name, slug, address, city, area, contact number, time zone, business day start, the current business date, hours (`hours` jsonb), photo paths (`photo_paths` jsonb), and the organization's id, name, slug, logo, cancellation policy, hold time, and booking horizon (the organization slug serves `/o/:orgSlug`) |
+| `public_branch_services` | Anyone | Offered, active services of those branches: name, description, duration, effective price (the branch override, else the catalogue price), starting-price flag, sort order, and category id, name, and sort order. Buffers are not shown |
+| `public_branch_staff` | Anyone | Bookable, active staff assigned to those branches with at least one shift there: display name, title, photo, and `service_ids`, the offered active services each performs |
 | `directory_branches` | Signed-in, non-guest users | `public_branches` limited to listed organizations, with category, city, and area |
 | `my_bookings` | The signed-in user | Own bookings with branch and service summary |
 | `unbilled_fee_summary` | Owner | Running balance by branch |
@@ -471,7 +476,7 @@ A branch's **deposit reviewers** are the owner, the managers assigned to the bra
 | `my_branches` | The signed-in user | Active branches the caller works in: all of an owner's, the assigned ones for managers and staff |
 | `branch_setup_status` | Members | Per active branch: published flag, whether the address is complete, open days, offered active services, bookable active staff with a shift, complete payment details, and terms accepted. The setup screens read it for the publishing checklist and to refuse removing a published branch's last required item |
 
-Views run with the caller's rights (`security_invoker`) unless they must expose columns from tables the caller cannot read, in which case they select only public columns.
+Views run with the caller's rights (`security_invoker`) unless they must expose columns from tables the caller cannot read, in which case they select only public columns. The three public views run with the owner's rights for that reason. `public_branches` calls `private.business_date`, and a view's functions run with the caller's rights, so `anon` has usage on schema `private` and execute on that one function.
 
 ## 12. Functions (called through PostgREST)
 
@@ -488,12 +493,14 @@ Views run with the caller's rights (`security_invoker`) unless they must expose 
 | `search_clients` | Member of the branch (any role) | Bounded, paginated search of the organization's clients by name or mobile number; returns id, name, and mobile number only |
 | `merge_clients` | Owner, manager | Moves bookings, sales, and notes from a duplicate record to the kept one and removes the duplicate. Two records linked to different accounts cannot be merged |
 | `get_available_slots` | Anyone | Open start times for a branch, business date, services, and optional staff member (see below) |
-| `get_booking_by_code` | Anyone holding the code, with or without a session | The client-facing view of one booking: status, branch name, address, and contact number, staff display name, services, times, amounts, payment details snapshot, hold and review deadlines, the latest proof's status and review note, and the accepted policy. Never the client's mobile number or the shop's notes |
+| `get_next_available_date` | Anyone | The first business date after a given one, within the booking window, with an open start time, or null. Backs "No times left on this day" |
+| `get_booking_quote` | Anyone | Service total, deposit, convenience fee, and amount due for a branch and services, calculated as `create_online_booking` does; no row when the branch is not taking bookings or a service is not offered |
+| `get_booking_by_code` | Anyone holding the code, with or without a session | The client-facing view of one booking: id, code, status (a hold past `hold_expires_at` reads as `hold_expired` before the job runs), branch name, slug, address, contact number, and time zone, organization name, staff display name, start time and when the last service ends (no buffer), services, amounts, payment details snapshot, booking time, hold and review deadlines, the accepted policy, and who cancelled. The client's name and note only to the creator and the branch's members, and flags for whether the caller is the creator or a member and whether a guest made it. Never the client's mobile number or the shop's notes. Phase 4 adds the latest proof's status and review note |
 | `claim_guest_booking` | Signed-in client or guest holding the code | Makes the caller the booking's creator when the current creator is a guest profile, so the booking can be paid, cancelled, or carried into an account from this device. Refused when the creator is a non-guest account, who signs in instead |
-| `create_online_booking` | Client or guest | Refuses when the caller already has two unexpired holds. Expires stale holds for the staff member, resolves "any available", calculates totals, deposit, and fee, sets `end_at` with the buffer and the business date, snapshots payment details and the accepted policy and privacy notice, upserts the client record, inserts as `held`, notifies the branch's deposit reviewers and the booked staff member |
+| `create_online_booking` | Client or guest | Locks the caller's profile and refuses when the caller already has two unexpired holds. Checks the start time against the same rules as `get_available_slots`, resolves "any available" (the qualifying staff member with the fewest booked minutes that business date, then by name), expires that staff member's stale holds, calculates totals, deposit, and fee, sets `end_at` with the buffer and the business date, snapshots payment details, the cancellation policy, and the accepted privacy notice version, upserts the client record, inserts as `held`, fills the caller's profile name and mobile number when empty, and notifies the branch's deposit reviewers and the booked staff member. When the overlap guard trips on a booking committed meanwhile, "any available" looks again, up to three times |
 | `submit_payment_proof` | Booking's creator | Refused once the hold has run out (`hold_expired`, or `held` past `hold_expires_at`), because the slot may already be someone else's. Adds a proof, moves to `payment_submitted`, sets `review_expires_at`, notifies reviewers |
 | `review_payment_proof` | Permitted member | Accept, reject, or request resubmission. Accepting confirms the booking and inserts the fee entry. Requesting resubmission resets `review_expires_at`, giving the client a full review time to send a new proof |
-| `cancel_booking` | Booking's creator or a member of the branch | The client cancels from `held`, `payment_submitted`, `needs_resubmission`, `review_expired_pending_resolution`, or `confirmed`; the shop from those and `waiting` or `checked_in`. Withdraws a submitted proof; records who, when, and why |
+| `cancel_booking` | Booking's creator or a member of the branch | The client cancels before the start time from `held` (while the hold lasts), `payment_submitted`, `needs_resubmission`, `review_expired_pending_resolution`, or `confirmed`; the shop from those and `waiting` or `checked_in`. Records who, as which side, when, and why in `cancellation_metadata`. Built in phase 3; phase 4 adds withdrawing a submitted proof |
 | `record_refund_outcome` | Deposit reviewers of the branch | Records a refund settled outside GroomBox: on a cancelled, rejected, or no-show booking, or for a deposit larger than the final bill |
 | `create_staff_booking` | Member of the branch (any role) | Inserts as `confirmed` with no deposit or fee |
 | `reschedule_booking` | Member of the branch (any role) | Moves to a new time or staff member, subject to the overlap constraint |
@@ -517,7 +524,7 @@ Views run with the caller's rights (`security_invoker`) unless they must expose 
 
 Functions run by `pg_cron`, not exposed through PostgREST:
 
-- `expire_holds` and `expire_reviews`, every 5 minutes.
+- `expire_holds` and `expire_reviews`, every 5 minutes. `private.expire_holds(staff_id)` also runs inside `create_online_booking` for one staff member; each expiry writes an activity row, with no actor from the job.
 - `remind_pending_reviews`, every 5 minutes: notifies deposit reviewers for `payment_submitted` bookings with an hour or less left on `review_expires_at` and no `review_reminder_sent_at`, then sets it.
 - `issue_fee_statements`, daily just after midnight in `Asia/Manila`: issues statements for a cut-off date that has just ended.
 - `restrict_overdue_organizations`, daily: moves `issued` statements past `due_at` to `overdue` and restricts their organizations with reason `overdue_statement`. An organization that is already restricted keeps its reason. A manual restore therefore holds until another statement goes overdue.
@@ -537,7 +544,7 @@ Functions called by members check that the caller's organization is accessible, 
 | `service_categories`, `services`, `staff`, `staff_branches`, `staff_services` | Members | Owner |
 | `staff_shifts` | Members | Owner; managers for shifts at their branches |
 | `staff_time_off` | Members | Owner; managers for staff assigned to their branches |
-| `clients` | Owner, manager; staff see clients on their branches' bookings | Owner, manager; staff only through floor and checkout functions |
+| `clients` | Owner, manager; staff see clients on their branches' bookings | Owner, manager (name, mobile number, notes); staff only through floor and checkout functions |
 | `bookings`, `booking_services` | Members by branch scope; the booking's creator. Anyone else holding the code goes through `get_booking_by_code` | Functions only |
 | `payment_proofs` | Permitted reviewers by branch; the submitter | Functions only |
 | `sales`, `sale_payments` | Owner, manager by branch; staff see sales they completed (`completed_by`) | Functions only |
@@ -559,6 +566,7 @@ Column grants on the owner's direct updates:
 |---|---|
 | `accessible_organization_ids()` | Organizations where the caller is an active member and access is active |
 | `owned_organization_ids()` | The same, limited to the owner role |
+| `managed_organization_ids()` | The same, limited to the owner and manager roles |
 | `branch_ids_with_role(roles)` | Branches of accessible organizations where the caller holds one of the roles: every branch for an owner, the assigned ones for a manager or staff member |
 | `colleague_user_ids()` | Users who are active members of the caller's accessible organizations |
 | `is_platform_admin()` | Whether the caller has a `platform_admins` row; used as a scalar subquery |
@@ -586,5 +594,7 @@ All buckets: 5 MB limit, image types only.
 - A spa branch open past midnight, with shifts and bookings that cross midnight.
 - Bookings in every status, proofs in every status, completed sales, one closed day.
 - Fee entries, one paid statement, one issued, one overdue.
+
+Phase 3 seeds bookings relative to the seed time: a confirmed booking at the late-night spa that crosses midnight, a guest's held and expired holds and a client's cancelled booking at Makati, and a confirmed booking at the restricted organization. Later phases add the remaining statuses with their proofs and sales.
 
 Seed data never goes in migrations.

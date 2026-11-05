@@ -87,7 +87,7 @@ After sign-in, a user with both a client profile and a membership lands on the s
 2. **Services.** Pick one or more. A running total and total duration show at the bottom.
 3. **Staff.** Pick a staff member who performs all chosen services, or "Any available".
 4. **Date and time.** Pick a date, from today up to the shop's booking horizon; open start times load for that date. Unavailable days are disabled. At a branch open past midnight, times after midnight appear at the end of the opening day's list, marked with the next day, for example "1:00 AM (Sun)".
-5. **Details.** A signed-in client confirms name and mobile number. A visitor chooses "Continue as guest" (name and mobile number) or signs in.
+5. **Details.** A signed-in client confirms name and mobile number, prefilled from their account. A visitor chooses "Continue as guest" (name and mobile number, behind the bot check, which starts a guest session) or signs in; signing in returns to this step with the chosen services, staff, and time kept. A returning guest's session is reused.
 6. **Review.** Shows services, staff, time, service total, deposit, convenience fee, amount due now, balance due at the shop, and the cancellation policy. The client ticks to accept the cancellation policy and the privacy notice (both linked) and taps "Hold my slot".
 7. **Pay.** The slot is held. The screen shows a countdown, the amount due, and the branch's payment details and QR. The client pays in their own e-wallet app.
 8. **Report payment.** The client enters the reference number, amount, and method, optionally attaches a screenshot, and submits.
@@ -243,7 +243,7 @@ The booking code works like a key: anyone who has the link can see the booking, 
 
 1. The page loads the booking with `get_booking_by_code`. The creator, a signed-in client who owns it, and branch members see the full page as usual.
 2. Anyone else holding the link sees the status, shop, time, services, amounts, and payment details, read-only. The client's mobile number and the shop's notes never appear.
-3. If the booking was made as a guest, the page offers "Manage this booking here". Tapping it makes this device's session the booking's owner, so the client can report payment, cancel, or create an account. The old device loses access.
+3. If the booking was made as a guest, the page offers "Manage this booking here". Tapping it makes this device's session the booking's owner, starting a guest session behind the bot check if the device has none, so the client can report payment, cancel, or create an account. The old device loses access and sees the booking read-only, like anyone with the link.
 4. If the booking was made by a signed-in account, the page offers "Sign in to manage this booking" instead.
 
 ## 16. Empty, loading, and error states

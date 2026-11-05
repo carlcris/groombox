@@ -13,7 +13,7 @@ import { activeServicesQueryOptions, type ActiveService } from "@/features/catal
 import { branchOfferingsQueryOptions, branchSetupQueryKey } from "@/features/branch-setup/branch-setup-queries";
 import { refreshBranchData } from "@/features/organization/branch-cache";
 import type { WorkBranch } from "@/features/organization/membership-queries";
-import { PublishGuardError } from "@/features/organization/publish-guard-error";
+import { SetupGuardError } from "@/features/organization/setup-guard-error";
 import { fillTemplate, messages } from "@/lib/messages";
 import { formatPeso } from "@/lib/money-formatting";
 import { amountText, textToOptionalNumber } from "@/lib/number-field-schemas";
@@ -47,7 +47,7 @@ export function OfferingsSection({
         return;
       }
       // A published branch keeps at least one offered service (SET-10).
-      if (isPublished && offeredServiceCount <= 1) throw new PublishGuardError(messages.publishGuards.lastOffering);
+      if (isPublished && offeredServiceCount <= 1) throw new SetupGuardError(messages.publishGuards.lastOffering);
       const { error } = await supabase.from("branch_services").delete().eq("branch_id", branch.id).eq("service_id", serviceId);
       if (error) throw error;
     },

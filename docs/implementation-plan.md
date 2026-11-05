@@ -83,8 +83,10 @@ Total: roughly 15–20 weeks. The earlier plan said 13–15; the difference come
 - `bookings`, `booking_services`, `clients`; the exclusion constraint; the shared business date function.
 - `get_available_slots` and `create_online_booking`, with "any available", the booking window, buffers, and the two-hold limit.
 - Public views; branch and organization pages; the booking flow through to the held state, with acceptance of the policy and privacy notice.
-- Guest sessions with the bot check and Auth rate limits; client sign-in with Google and Facebook; in-app browser detection. Local tests use Turnstile test keys and seeded email users (TRD §14).
+- Guest sessions with the bot check and Auth rate limits; client sign-in with Google and Facebook; in-app browser detection. Local tests use Turnstile test keys and seeded email users (TRD §14); Turnstile verification stays off locally because it calls Cloudflare, and the tests stand in for the widget.
 - Booking status page through `get_booking_by_code`, and `claim_guest_booking`.
+- `cancel_booking` for the statuses that exist now, because a guest cancels in the exit criteria; phase 4 extends it to withdraw a submitted proof.
+- `get_booking_quote` for the review step's amounts and `get_next_available_date` for "No times left on this day".
 - `expire_holds` job.
 - The branch setup screen's check that a branch has no upcoming bookings before it is deactivated.
 
@@ -100,7 +102,7 @@ This is the highest-risk phase. If it overruns, "any available" is the first cut
 ### Phase 4: deposits
 
 **Build**
-- `payment_proofs`; `submit_payment_proof`, `review_payment_proof`, `cancel_booking`, `record_refund_outcome`; the `payment-proofs` bucket and its policies.
+- `payment_proofs`; `submit_payment_proof`, `review_payment_proof`, `record_refund_outcome`; `cancel_booking` (built in phase 3) extended to withdraw a submitted proof; the `payment-proofs` bucket and its policies.
 - Pay and report-payment screens with countdown, copy buttons, and optional screenshot upload.
 - Deposit review list and sheet; live badge.
 - `expire_reviews` and `remind_pending_reviews` jobs and the needs-resolution state.

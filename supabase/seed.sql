@@ -15,7 +15,11 @@
 -- logo are files in storage, which SQL cannot upload: after `supabase db reset`, run
 -- `npm run db:seed:images` to put placeholder images at the seeded paths.
 --
--- Later phases add bookings, sales, and statements (docs/backend-schema.md §15).
+-- Bookings are placed relative to the time of the seed: a confirmed BGC booking that crosses
+-- midnight, a guest's held and expired holds and a client's cancelled booking at Makati, and a
+-- confirmed booking at the restricted Kanto Barbers. Phase 4 adds payment proofs and the deposit
+-- review statuses, phase 5 walk-ins and visits in progress, and phase 6 completed sales; later
+-- phases add statements (docs/backend-schema.md §15).
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -45,7 +49,7 @@ from (
     ('10000000-0000-0000-0000-000000000005'::uuid, 'owner@kanto.test', 'Ramon Dizon'),
     ('10000000-0000-0000-0000-000000000006'::uuid, 'staff@kanto.test', 'Mike Villanueva'),
     ('10000000-0000-0000-0000-000000000007'::uuid, 'client@groombox.test', 'Bea Lim'),
-    ('10000000-0000-0000-0000-000000000008'::uuid, null, null)
+    ('10000000-0000-0000-0000-000000000008'::uuid, null, 'Ana Guest')
 ) as seeded (id, email, full_name);
 
 insert into auth.identities (id, provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
@@ -227,3 +231,119 @@ values
    'Finish setting up your branches to start taking online bookings.'),
   ('10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001', 'welcome', 'You joined Haven Spa',
    'You can now see the BGC Late Night branch.');
+
+
+-- Clients: Bea at both organizations, and the guest at Haven Spa.
+insert into public.clients (id, organization_id, user_id, full_name, mobile_number, notes)
+values
+  ('90000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000007',
+   'Bea Lim', '0917 555 0303', 'Prefers a firm massage.'),
+  ('90000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000008',
+   'Ana Guest', '0917 555 0404', null),
+  ('90000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000007',
+   'Bea Lim', '0917 555 0303', null);
+
+-- Seed dates in Manila: the first weekday at least three days out, when Lea works at BGC, and the
+-- first day at least two days out that Makati is open.
+create temporary table seed_dates as
+select
+  (
+    select day::date
+    from generate_series(today + 3, today + 9, interval '1 day') as day
+    where extract(dow from day) between 1 and 5
+    order by day
+    limit 1
+  ) as bgc_date,
+  (
+    select day::date
+    from generate_series(today + 2, today + 8, interval '1 day') as day
+    where extract(dow from day) <> 1
+    order by day
+    limit 1
+  ) as makati_date,
+  today + 2 as cubao_date
+from (select private.business_date(now(), 'Asia/Manila', '05:00') as today) as manila;
+
+-- Booking codes come from the database; the seed omits them.
+insert into public.bookings (
+  id, organization_id, branch_id, client_id, booked_by, staff_id, source, status, start_at, end_at, business_date,
+  service_total, deposit_amount, convenience_fee, amount_due, payment_instructions_snapshot, policy_acceptance_metadata,
+  hold_expires_at, cancellation_metadata
+)
+select
+  seeded.id, seeded.organization_id, seeded.branch_id, seeded.client_id, seeded.booked_by, seeded.staff_id, 'online',
+  seeded.status::public.booking_status, seeded.start_at, seeded.start_at + make_interval(mins => seeded.length_minutes),
+  private.business_date(seeded.start_at, 'Asia/Manila', '05:00'), seeded.service_total, seeded.deposit_amount,
+  seeded.convenience_fee, seeded.deposit_amount + seeded.convenience_fee, b.payment_instructions,
+  jsonb_build_object(
+    'cancellation_policy', o.cancellation_policy, 'privacy_notice_version', '2026-11-05',
+    'accepted_at', now() - interval '2 hours'
+  ),
+  seeded.hold_expires_at, seeded.cancellation_metadata
+from seed_dates d
+cross join lateral (
+  values
+    -- Swedish massage at BGC, 11:45 PM to 1:00 AM with its clean-up time.
+    ('80000000-0000-0000-0000-000000000001'::uuid, '20000000-0000-0000-0000-000000000001'::uuid,
+     '30000000-0000-0000-0000-000000000002'::uuid, '90000000-0000-0000-0000-000000000001'::uuid,
+     '10000000-0000-0000-0000-000000000007'::uuid, '70000000-0000-0000-0000-000000000003'::uuid, 'confirmed',
+     (d.bgc_date + time '23:45') at time zone 'Asia/Manila', 75, 1000.00, 100.00, 30.00,
+     now() - interval '105 minutes', null::jsonb),
+    -- The guest's haircut, held for the next 15 minutes.
+    ('80000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001',
+     '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000002',
+     '10000000-0000-0000-0000-000000000008', '70000000-0000-0000-0000-000000000001', 'held',
+     (d.makati_date + time '15:00') at time zone 'Asia/Manila', 45, 350.00, 100.00, 10.50,
+     now() + interval '15 minutes', null),
+    -- The guest's earlier hair color hold, which ran out.
+    ('80000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001',
+     '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000002',
+     '10000000-0000-0000-0000-000000000008', '70000000-0000-0000-0000-000000000002', 'hold_expired',
+     (d.makati_date + time '13:00') at time zone 'Asia/Manila', 135, 2500.00, 500.00, 50.00,
+     now() - interval '1 hour', null),
+    -- Bea's haircut, which she cancelled.
+    ('80000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000001',
+     '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001',
+     '10000000-0000-0000-0000-000000000007', '70000000-0000-0000-0000-000000000001', 'cancelled',
+     (d.makati_date + time '16:00') at time zone 'Asia/Manila', 45, 350.00, 100.00, 10.50,
+     now() - interval '90 minutes',
+     jsonb_build_object(
+       'by', 'client', 'cancelled_by', '10000000-0000-0000-0000-000000000007', 'cancelled_at', now() - interval '100 minutes',
+       'reason', 'Schedule changed'
+     )),
+    -- Bea's barber cut at the restricted Kanto Barbers: booking links keep working.
+    ('80000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000002',
+     '30000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000003',
+     '10000000-0000-0000-0000-000000000007', '70000000-0000-0000-0000-000000000004', 'confirmed',
+     (d.cubao_date + time '10:00') at time zone 'Asia/Manila', 35, 250.00, 100.00, 10.00,
+     now() - interval '3 hours', null)
+) as seeded (
+  id, organization_id, branch_id, client_id, booked_by, staff_id, status, start_at, length_minutes, service_total,
+  deposit_amount, convenience_fee, hold_expires_at, cancellation_metadata
+)
+join public.branches b on b.id = seeded.branch_id
+join public.organizations o on o.id = seeded.organization_id;
+
+insert into public.booking_services (
+  booking_id, organization_id, service_id, service_name, duration_minutes, buffer_minutes, price, sort_order
+)
+values
+  ('80000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001',
+   'Swedish massage', 60, 15, 1000.00, 1),
+  ('80000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
+   'Haircut', 45, 0, 350.00, 1),
+  ('80000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000004',
+   'Hair color', 120, 15, 2500.00, 1),
+  ('80000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
+   'Haircut', 45, 0, 350.00, 1),
+  ('80000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000005',
+   'Barber cut', 30, 5, 250.00, 1);
+
+drop table seed_dates;
+
+insert into public.notifications (recipient_user_id, organization_id, type, title, body, entity_type, entity_id)
+values
+  ('10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001', 'booking_created', 'New online booking',
+   'Bea Lim booked Swedish massage at BGC Late Night.', 'booking', '80000000-0000-0000-0000-000000000001'),
+  ('10000000-0000-0000-0000-000000000007', '20000000-0000-0000-0000-000000000001', 'booking_cancelled',
+   'Booking cancelled', 'You cancelled your haircut at Makati.', 'booking', '80000000-0000-0000-0000-000000000004');

@@ -15,11 +15,13 @@ function RootLayout() {
   const { queryClient } = Route.useRouteContext();
   useAppVersionCheck();
 
-  // Route guards read the session, so a sign-in or sign-out re-runs them. Signing out also drops
-  // everything cached for the previous user.
+  // Route guards read the session, so a sign-in or sign-out re-runs them. Signing out drops
+  // everything cached for the previous user; signing in (including a guest session starting) fetches
+  // cached reads again as the new user.
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") queryClient.clear();
+      if (event === "SIGNED_IN") void queryClient.invalidateQueries();
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") void router.invalidate();
     });
     return () => data.subscription.unsubscribe();

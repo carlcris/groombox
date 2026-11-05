@@ -20,7 +20,7 @@ import {
 import { refreshBranchData } from "@/features/organization/branch-cache";
 import { findTimeRangeProblems, weekdayDisplayOrder, type TimeRangeProblem } from "@/features/organization/branch-hours-schema";
 import type { WorkBranch } from "@/features/organization/membership-queries";
-import { PublishGuardError } from "@/features/organization/publish-guard-error";
+import { SetupGuardError } from "@/features/organization/setup-guard-error";
 import { formatTimeOfDay } from "@/lib/date-formatting";
 import { messages } from "@/lib/messages";
 import { supabase } from "@/lib/supabase-client";
@@ -52,7 +52,7 @@ export function ShiftsSection({ branch, isPublished }: { branch: WorkBranch; isP
       if (isPublished) {
         const bookableIds = new Set((staff.data ?? []).filter((member) => member.isBookable).map((member) => member.id));
         const remaining = (shifts.data ?? []).filter((other) => other.id !== shift.id && bookableIds.has(other.staffId));
-        if (remaining.length === 0) throw new PublishGuardError(messages.publishGuards.lastStaffShift);
+        if (remaining.length === 0) throw new SetupGuardError(messages.publishGuards.lastStaffShift);
       }
       const { error } = await supabase.from("staff_shifts").delete().eq("id", shift.id);
       if (error) throw error;

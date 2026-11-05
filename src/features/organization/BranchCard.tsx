@@ -15,11 +15,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { refreshBranchData } from "@/features/organization/branch-cache";
+import { hasUpcomingBookings } from "@/features/organization/branch-bookings";
 import type { OwnedBranch } from "@/features/organization/branch-queries";
 import { isReadyToPublish, type BranchSetupStatus } from "@/features/organization/branch-setup-status";
 import { BranchDetailsSheet } from "@/features/organization/BranchDetailsSheet";
 import { PaymentDetailsSheet } from "@/features/organization/PaymentDetailsSheet";
 import { PublishingChecklist } from "@/features/organization/PublishingChecklist";
+import { SetupGuardError } from "@/features/organization/setup-guard-error";
 import { messages } from "@/lib/messages";
 import { supabase } from "@/lib/supabase-client";
 
@@ -50,9 +52,11 @@ export function BranchCard({
     },
   });
 
-  // Deactivating needs the branch unpublished (and, once bookings exist, none upcoming).
+  // Deactivating needs the branch unpublished, which hides the button otherwise, and no upcoming
+  // bookings (app flow §10). The screen owns this check; the database does not repeat it.
   const deactivate = useMutation({
     mutationFn: async () => {
+      if (await hasUpcomingBookings(branch.id)) throw new SetupGuardError(messages.branches.hasUpcomingBookings);
       const { error } = await supabase.from("branches").update({ is_active: false }).eq("id", branch.id);
       if (error) throw error;
     },
