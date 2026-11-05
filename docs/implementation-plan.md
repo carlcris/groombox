@@ -46,6 +46,7 @@ Total: roughly 15–20 weeks. The earlier plan said 13–15; the difference come
 - Vite, React, TypeScript, TanStack Router and Query, Tailwind, shadcn/ui, with the design tokens from the design brief.
 - Supabase local project; migration tooling, baseline file and check script, type generation.
 - Tables: `profiles`, `platform_admins`, `platform_settings`, `organizations`, `branches`, `organization_members`, `member_branches`, `organization_invites`, `activity_logs`, `notifications`.
+- Composite foreign keys on `(parent_id, organization_id)` from the first migration; the shared business date function.
 - Row-level rules and the membership lookup, including the restricted-organization rule.
 - Sign-up and sign-in for owners and members; route guards per audience.
 - `create_organization`; invites with `get_invite_preview`; team screen with `update_member` and `remove_member`; branch switcher.
@@ -61,9 +62,9 @@ Total: roughly 15–20 weeks. The earlier plan said 13–15; the difference come
 
 **Build**
 - Categories, services, branch offerings and price overrides.
-- Staff, branch and service assignments, shifts, time off, commission rates.
-- Branch hours, closures, photos, payment details and QR upload.
-- Deposit rule, hold and review times, cancellation policy, directory listing switch; terms acceptance through `accept_terms`.
+- Staff, branch and service assignments, shifts (including past midnight), time off, commission rates.
+- Branch hours (including past midnight), business day start, closures, photos, payment details and QR upload.
+- Deposit rule (fixed per service or percentage, with per-service overrides), hold and review times, booking window, cancellation policy, directory listing switch; terms acceptance through `accept_terms`.
 - Column grants that keep slugs, access status, and terms acceptance out of the owner's direct updates.
 - Onboarding checklist, publish and unpublish, and the screen rules that keep a published branch complete.
 - Audit triggers on the setup tables that take direct writes.
@@ -78,16 +79,17 @@ Total: roughly 15–20 weeks. The earlier plan said 13–15; the difference come
 
 **Build**
 - `bookings`, `booking_services`, `clients`; the exclusion constraint.
-- `get_available_slots` and `create_online_booking`, with "any available".
-- Public views; branch and organization pages; the booking flow through to the held state.
-- Guest sessions with the bot check; client sign-in with Google and Facebook; in-app browser detection.
-- Booking status page reachable by booking code.
+- `get_available_slots` and `create_online_booking`, with "any available", the booking window, buffers, and the two-hold limit.
+- Public views; branch and organization pages; the booking flow through to the held state, with acceptance of the policy and privacy notice.
+- Guest sessions with the bot check and Auth rate limits; client sign-in with Google and Facebook; in-app browser detection. Local tests use Turnstile test keys and seeded email users (TRD §14).
+- Booking status page through `get_booking_by_code`, and `claim_guest_booking`.
 - `expire_holds` job.
 
 **Exit criteria**
 - A guest and a signed-in client can each hold a slot from a branch link on a phone.
 - A concurrency test fires simultaneous bookings at one slot; exactly one succeeds.
-- Availability is correct across shifts, time off, closures, buffers, and existing bookings, including a booking that crosses midnight in the branch's time zone.
+- Availability is correct across shifts, time off, closures, buffers, the booking window, and existing bookings, including a spa open 2:00 PM to 2:00 AM with a booking that crosses midnight, and the point where the UTC date changes.
+- A guest opens their booking from the link on a second device, takes it over, and cancels it; a stranger with the link sees it read-only, without the mobile number.
 - The availability query meets the performance target in the TRD, measured as an authenticated role.
 
 This is the highest-risk phase. If it overruns, "any available" is the first cut within this phase (the directory, cut first overall in section 5, belongs to phase 7).
@@ -95,16 +97,17 @@ This is the highest-risk phase. If it overruns, "any available" is the first cut
 ### Phase 4: deposits
 
 **Build**
-- `payment_proofs`; `submit_payment_proof`, `review_payment_proof`, `cancel_booking`.
+- `payment_proofs`; `submit_payment_proof`, `review_payment_proof`, `cancel_booking`, `record_refund_outcome`.
 - Pay and report-payment screens with countdown, copy buttons, and optional screenshot upload.
 - Deposit review list and sheet; live badge.
-- `expire_reviews` job and the needs-resolution state.
+- `expire_reviews` and `remind_pending_reviews` jobs and the needs-resolution state.
 - Notifications for each deposit event.
 - Fee entry created on acceptance (the `fee_entries` table lands here; statements come in phase 8).
 
 **Exit criteria**
 - The full path works: hold, pay, report, accept, confirmed, with both sides updating live.
-- Resubmission and rejection paths work.
+- Resubmission and rejection paths work, and resubmission restarts the review time.
+- A payment reported after the hold ran out is refused, even before `expire_holds` runs.
 - A reported payment whose review time passes keeps its slot and is flagged.
 - Accepting a deposit creates exactly one fee entry, and a forced failure mid-function leaves no partial rows.
 
@@ -126,12 +129,13 @@ This is the highest-risk phase. If it overruns, "any available" is the first cut
 ### Phase 6: checkout and daily close
 
 **Build**
-- `sales`, `sale_items`, `sale_payments`; `complete_checkout` with commission and deposit deduction.
-- Visit detail and checkout screen with split payments.
-- `daily_closes`, `daily_close_staff`; summary, cash count, close and reopen.
+- `sales`, `sale_items`, `sale_tips`, `sale_payments`; `complete_checkout` with discount split, commission, tips per staff member, and deposit deduction.
+- Visit detail and checkout screen with split payments that must add up to the balance.
+- `daily_closes`, `daily_close_staff`; summary, opening float, cash count, fees collected, close and reopen.
 
 **Exit criteria**
-- A day of mixed visits closes with totals that match a hand calculation in the test.
+- A day of mixed visits closes with totals that match a hand calculation in the test, including rounding and a visit checked out after midnight at a late-night branch.
+- A deposit larger than the final bill leaves a zero balance and shows the refund due.
 - A closed day rejects new or changed sales until reopened.
 - Commission honours staff default and per-service overrides, after discount.
 
@@ -153,12 +157,13 @@ If the schedule is tight, ship this phase without the directory and add it after
 
 **Build**
 - `fee_statements`; `issue_fee_statements` and `restrict_overdue_organizations` jobs.
-- Owner billing screen: unbilled balance, statements, payment instructions, reference entry.
-- Admin: settings, statements list and detail, mark paid, adjustments, manual restrict and restore.
+- Owner billing screen: unbilled balance, statements, GroomBox's payment instructions (`platform_billing_details`), reference entry.
+- Admin: settings, statements list and detail, mark paid, void, adjustments, manual restrict and restore with the restriction reason.
 - Restriction notice and route guard.
 
 **Exit criteria**
-- With the clock moved in tests, a cut-off issues correct statements, balances under the minimum carry over, and an unpaid statement restricts the organization after the grace period.
+- With the clock moved in tests, each cut-off schedule issues correct statements in Philippine time, balances under the minimum carry over, and an unpaid statement restricts the organization after the grace period.
+- Paying or voiding the overdue statement lifts an automatic restriction but not a manual one.
 - A restricted owner can open billing and nothing else; a restricted manager sees only the notice.
 - A client can still book a restricted organization.
 - Marking the statement paid restores access.
@@ -171,6 +176,7 @@ If the schedule is tight, ship this phase without the directory and add it after
 - Performance pass on the booking route on a mid-range Android phone.
 - Privacy policy, terms for owners, and consent text at booking.
 - Printable booking QR for shops.
+- Real Google and Facebook sign-in checked by hand on the hosted project, by the product owner.
 - A short owner guide in `docs/guides`.
 - Pilot metrics queries for the four goals in the PRD.
 - Hosted project set up and first deploy, by the product owner.

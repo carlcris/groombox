@@ -76,7 +76,7 @@ Each feature folder holds its queries, mutations, schemas, and components. A fea
 5. **Functions do not repeat UI validation.** They check only what the UI cannot guarantee: who the caller is, tenant and branch scope, permissions, and conditions that depend on current database state such as overlapping bookings.
 6. **Lists are paginated and filtered in the database.** No unbounded reads; search boxes query the server.
 7. **Errors**: functions raise coded errors; the app maps codes to safe messages. Raw database text is never shown.
-8. **Money** uses `numeric(20,2)`. Percentages use `numeric(5,2)`.
+8. **Money** uses `numeric(20,2)`. Percentages use `numeric(5,2)`. Every calculated amount is rounded to the centavo, half away from zero.
 
 ## 5. Authentication
 
@@ -95,6 +95,7 @@ Each feature folder holds its queries, mutations, schemas, and components. A fea
 
 - Every tenant table has `organization_id` and row-level security.
 - Policies resolve the caller's organizations through a set-based membership lookup, with `(select auth.uid())` evaluated once per statement, and indexes on the membership and correlation columns. Follow the RLS predicate performance rule in the repository instructions.
+- Child rows reference their tenant parents with composite foreign keys on `(parent_id, organization_id)`, so a row can never point at another organization's parent.
 - Role and branch scope:
 
 | Role | Read | Write |
@@ -103,16 +104,19 @@ Each feature folder holds its queries, mutations, schemas, and components. A fea
 | Manager | Assigned branches, plus the catalogue and client list | At assigned branches: everything staff can write, deposit review, daily close, and branch-level setup (hours, closures, photos, service offerings and price overrides, staff shifts and time off) |
 | Staff | Floor data for assigned branches, the clients on those bookings, the sales they completed, and their own sale items; other clients only through `search_clients` (name and mobile number) | Floor work at assigned branches: walk-ins, appointments and rescheduling, visit status, checkout; deposit review only if permitted |
 | Client or guest | Own profile, own bookings and proofs, public branch data | Own profile directly; bookings and proofs through booking functions only |
-| Platform admin | Statements, fee entries, organizations, platform settings | Statements, settings, organization access |
+| Platform admin | Statements, fee entries, organizations and branches, platform settings | Statements, settings, organization access |
 
-- **Restriction**: the membership lookup used by policies requires the organization's access status to be `active`. Statement tables use a separate policy that ignores access status for the owner. Client-facing booking functions do not check access status.
+- **Restriction**: the membership lookup used by policies requires the organization's access status to be `active`. Functions called by members check it with the same lookup. Statement tables use a separate policy that ignores access status for the owner, and owners read GroomBox's payment instructions through `platform_billing_details` whatever their status. Client-facing booking functions do not check access status. Each restriction records its reason, `overdue_statement` or `manual`; paying or voiding statements lifts only the first.
+- **Booking code**: the booking link carries `booking_code`, 12 random Crockford base32 characters, so it cannot be guessed. Holding it is enough to read the booking through `get_booking_by_code`, which returns client-facing fields only. A guest on another device calls `claim_guest_booking` to make the booking theirs and act on it. Bookings made by a signed-in account are managed by signing in.
 - **Public data**: guests and clients read branch, service, and staff display data through dedicated views that expose only public columns.
 - **Directory**: a view available only to signed-in, non-anonymous users, limited to listed organizations.
 - `SECURITY DEFINER` is used only where a function must cross a caller's row-level limits, such as a client creating a booking inside an organization. Each such function performs its own access checks.
 
 ## 7. Booking engine
 
-- **Availability** is a database function returning open start times for a branch, date, service list, and optional staff member. Inputs: branch hours and closures, staff shifts and time off, service durations and buffers, and existing bookings that block the slot.
+- **Availability** is a database function returning open start times for a branch, business date, service list, and optional staff member. Inputs: branch hours and closures, staff shifts and time off, service durations and buffers, existing bookings that block the slot, and the organization's slot step, minimum notice, and booking horizon.
+- **Duration**: a booking's range is its services back to back plus the largest buffer among them, added once at the end. The whole range must fit inside the branch hours and the staff member's shift. The client is shown when the last service ends.
+- **Past midnight**: branch hours and shifts can close the next day (`closes_next_day`, `ends_next_day`). They belong to the day they open and end by the branch's `business_day_start` (default 5:00 AM). A moment's business date is its local date after subtracting `business_day_start`; sales, queue numbers, the daily close, and the floor view use it, through one shared function.
 - **Intervals** are half-open, `[start_at, end_at)`, stored as `timestamptz`. Slot maths runs in the branch's time zone.
 - **No double booking**: an exclusion constraint on staff member and time range covers every status that blocks a slot. Because a constraint cannot depend on the current time, the create-booking function first marks that staff member's expired holds as `hold_expired`, then inserts. The constraint is the final guard against races.
 - **"Any available"** picks the qualifying staff member with the fewest booked minutes that day.
@@ -136,10 +140,11 @@ Slot-blocking rules:
 |---|---|---|
 | Expire holds | Every 5 minutes | `held` past `hold_expires_at` becomes `hold_expired` |
 | Expire reviews | Every 5 minutes | `payment_submitted` or `needs_resubmission` past `review_expires_at` becomes `review_expired_pending_resolution`; notifies both sides |
-| Issue statements | Daily | On a cut-off date, creates one statement per organization for unbilled fee entries at or above the minimum |
-| Restrict overdue | Daily | Organizations with a statement past its due date become `restricted` |
+| Remind pending reviews | Every 5 minutes | Notifies deposit reviewers once when a `payment_submitted` booking has an hour or less of review time left |
+| Issue statements | Daily, just after midnight in `Asia/Manila` | For a cut-off date that has just ended, creates one statement per organization for unbilled fee entries at or above the minimum |
+| Restrict overdue | Daily | `issued` statements past their due date become `overdue`, and their organizations become `restricted` with reason `overdue_statement` |
 
-All jobs are idempotent.
+All jobs are idempotent. Cut-off dates: weekly on the set weekday, semi-monthly on the 15th and the last day of the month, monthly on the last day, all in `Asia/Manila`.
 
 ## 9. Realtime
 
@@ -189,6 +194,8 @@ In-app only. Database functions insert notification rows as part of the operatio
 
 - End-to-end tests with Playwright are the main mechanism, written per feature before it is called done, running against local Supabase with seed data. Each run keeps its HTML report, with traces for failed tests.
 - pgTAP tests cover row-level rules: each role, each tenant boundary, restricted organizations, and anonymous users.
+- **Sign-in in local tests**: tests never reach Google, Facebook, or Cloudflare. The bot check runs locally with Cloudflare Turnstile's published test keys (always pass, and always fail for the negative case). Clients sign in as seeded email users in place of social sign-in. The guest upgrade test converts the anonymous user through the Auth API and checks that the user id and bookings are kept. The product owner checks real Google and Facebook sign-in by hand on the hosted project.
+- **Guest limits** are the bot check, Supabase Auth's rate limits on anonymous sign-ins (set in `supabase/config.toml`), and the two-hold limit in `create_online_booking`. Each has a test.
 - Transactional functions are tested for the success path and for a forced failure after an earlier write, proving nothing is left behind.
 - `npm run db:baseline:check` runs after every schema change.
 

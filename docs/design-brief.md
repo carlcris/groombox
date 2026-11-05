@@ -1,6 +1,6 @@
 # GroomBox: design brief
 
-Last updated: 2026-11-02
+Last updated: 2026-11-05
 Related: [product requirements](prd.md), [app flow](app-flow.md), [technical requirements](trd.md)
 
 ## 1. Direction
@@ -29,7 +29,8 @@ Colours come from the Tailwind palette. Components use semantic tokens (the shad
 | Primary | `teal-700` | `#0f766e` | Primary buttons, links, active navigation, selected states |
 | Primary hover | `teal-800` | `#115e59` | Hover and pressed |
 | Primary tint | `teal-50` | `#f0fdfa` | Selected rows, soft highlights |
-| Accent | `amber-400` | `#fbbf24` | The highlight colour: the logo mark, highlights, the countdown ring. Never a text colour on white |
+| Accent | `amber-400` | `#fbbf24` | The highlight colour: the logo mark and highlights. Never a text colour, and never the only mark of meaning on white |
+| Accent graphic | `amber-600` | `#d97706` | The countdown ring, which must reach 3:1 against its background |
 
 ### Neutrals (warm)
 
@@ -70,8 +71,10 @@ Destructive buttons use `red-700` with white text.
 | `sky-700` on `sky-50` | 5.57 | Text |
 | White on `red-700` | 6.47 | Text |
 | `stone-500` on white | 4.80 | Input borders (needs 3.0) |
+| `amber-600` on white | 3.18 | Countdown ring (needs 3.0) |
+| `amber-600` on `stone-50` | 3.05 | Countdown ring (needs 3.0) |
 
-`stone-400` on white is 2.52 and must not be used for text, icons, or input borders. `stone-200` is for decorative dividers only.
+`stone-400` on white is 2.52 and must not be used for text, icons, or input borders. `amber-400` on white is 1.67, so it is only for the logo mark and decoration. `stone-200` is for decorative dividers only.
 
 ### Token mapping (light)
 
@@ -109,7 +112,7 @@ Destructive buttons use `red-700` with white text.
 | Headings, numbers in summaries | Outfit | 500, 600 |
 | Body, labels, inputs | Inter | 400, 500, 600 |
 
-Both are variable fonts, self-hosted, loaded with `font-display: swap`. Only the Latin subset is shipped.
+Both are variable fonts, self-hosted, loaded with `font-display: swap`. Only the Latin subset is shipped, plus the peso sign ₱ (U+20B1), which sits outside Latin. The heading stack is `Outfit, Inter, system-ui`, so if a font file lacks ₱ the sign falls back to Inter, not a system font. Checking that the shipped files render ₱ is part of the font setup.
 
 | Style | Size (Tailwind) | Weight | Use |
 |---|---|---|---|
@@ -157,7 +160,7 @@ Built on shadcn/ui. GroomBox-specific patterns:
 | Staff choice | Avatar, name, and title in a horizontal list; "Any available" comes first |
 | Queue card | Queue number or time, client name, services, staff, status badge, and one next-step button |
 | Calendar | Columns per staff member on tablet and desktop; one staff member at a time with a switcher on phones. Blocks are coloured by status with a left edge stripe and always carry the client name and time as text |
-| Countdown | Remaining hold time as text with a ring in accent; turns to warning colours in the last two minutes |
+| Countdown | Remaining hold time as text with a ring in `amber-600`; the ring and text turn to warning colours in the last two minutes. The text carries the meaning; the ring supports it |
 | Payment details card | Method, account name, and number with a copy button, then the QR image, then the amount with a copy button |
 | Bottom sheet | Used on phones for short tasks (add walk-in, review deposit); a centred dialog on desktop |
 | Empty state | Icon, one sentence, one action |
@@ -207,7 +210,7 @@ Icons are Lucide, 20px in controls and 24px in navigation, one stroke width thro
 - Be clear that payment happens outside GroomBox: "Pay the shop directly, then tell us your reference number."
 - Errors say what went wrong and what to do; they never blame the user.
 - Currency is written as ₱ with thousands separators and no decimals unless the amount has centavos.
-- Dates read "Sat, 10 Oct"; times use the 12-hour clock, "2:30 PM".
+- Dates read "Sat, 10 Oct"; times use the 12-hour clock, "2:30 PM". A time after midnight on a late-night business day carries the calendar day: "1:00 AM (Sun)".
 
 ## 10. Brand basics
 

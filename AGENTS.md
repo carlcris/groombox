@@ -263,17 +263,21 @@ At completion, report:
 ### Tenancy
 - The tenant is the **organization** (an owner's business). Each organization has one or more **branches**.
 - **Every tenant table carries `organization_id`** with RLS. Policies resolve the caller's organizations with a set-based membership lookup, following the RLS Predicate Performance Rule.
+- Tenant children reference tenant parents with composite foreign keys on `(parent_id, organization_id)` against the parent's `unique (id, organization_id)`, so a row can never point at another organization's parent.
+- A staff profile is linked to a login only through `staff.member_id`. `member_branches` (where a login works in the app) and `staff_branches` (where a profile takes bookings) are separate and not kept in sync.
 - **Roles**:
   - `owner`: everything in the organization. Only the owner edits organization-wide data (organization profile, service catalogue, staff profiles, commission rates, policies, team, billing) and branch payment details.
   - `manager`: at assigned branches, everything a staff member can do, plus deposit review, the daily close, branch-level setup (hours, closures, photos, service offerings and price overrides, staff shifts and time off), and the branches' sales. Reads the organization's catalogue and client list, and merges duplicate clients.
   - `staff`: at assigned branches, floor work: add walk-ins, create and reschedule appointments, check in, start, mark no-show, and run checkout. Reads their branches' schedule, the clients on those bookings, the sales they completed, and their own sale items. Finds existing clients through `search_clients` (name and mobile number only). No setup, no daily close, and no branch sales totals.
   - Deposit review is allowed for owners, managers, and staff with `can_review_deposits`.
 - **Client accounts are platform-wide** (`profiles`). Each organization keeps its own private client record (`clients`) linked to the account; it is never visible to another organization.
-- **Restricted organizations**: membership lookups used by policies require `access_status = 'active'`. Statement tables use a separate owner policy that ignores access status. Client-facing booking functions never check access status.
+- **Restricted organizations**: membership lookups used by policies require `access_status = 'active'`. Statement tables use a separate owner policy that ignores access status. Functions called by members check access status with the same lookup; client-facing booking functions never check it.
 
 ### Database & Timestamps
 - **ALWAYS use `timestamptz`** for booking, shift, closure, and billing timestamps
 - **Each branch MUST have an IANA timezone** (default `Asia/Manila`), used for all slot and business-date calculations
+- **Business date**: a moment's local date after subtracting the branch's `business_day_start` (default 5:00 AM). Sales, queue numbers, the daily close, and the floor view's "today" all use the one shared function, so a 1:30 AM checkout belongs to the previous day
+- **Hours and shifts may run past midnight** (`closes_next_day`, `ends_next_day`). They belong to the day they open and must end by `business_day_start`
 - **Use half-open intervals `[start_at, end_at)`** for overlap checks
 - **Database timestamps are the source of truth** - never rely on client-side timers for expiry
 - Money is `numeric(20,2)`; percentages are `numeric(5,2)`
@@ -282,7 +286,11 @@ At completion, report:
 - **Prices, deposits, and convenience fees are calculated in the database**, never taken from the client
 - `amount_due = deposit_amount + convenience_fee`; the deposit is deducted at checkout, the fee is not
 - **A deposit is mandatory for online bookings** and must be greater than zero
+- The booking deposit is the sum of each service's deposit: the service's override, else the organization rule (a fixed amount per service, or a percentage of the service's price), each capped at that service's price. Fixed amounts and percentages are separate columns
 - The fee is a percentage of the booking's service total, bounded by the minimum and maximum in `platform_settings`
+- Every calculated amount is rounded to the centavo, half away from zero. The fee is rounded before its minimum and maximum apply. The discount is split across sale items in proportion to their amounts, with the remainder on the largest item
+- Accepting a deposit means the full amount due was received; there is no partial acceptance
+- At checkout the deposit applied is capped at the bill; any excess is refunded outside GroomBox and recorded with `record_refund_outcome`. Sale payments add up to the balance exactly
 - **Create exactly one `fee_entries` row when a deposit is accepted.** Never delete or reverse it when the booking is later cancelled, refunded, or a no-show
 - Staff-entered appointments and walk-ins carry no deposit and no fee
 - Money never passes through GroomBox: clients pay the shop, owners pay GroomBox against statements
@@ -305,13 +313,19 @@ At completion, report:
 
 **Overlap guard:** an exclusion constraint on `(staff_id, tstzrange(start_at, end_at, '[)'))` over the blocking statuses. Because a constraint cannot depend on `now()`, booking functions first move the staff member's expired holds to `hold_expired`, then insert.
 
+**Cancelling:** the client cancels from `held`, `payment_submitted`, `needs_resubmission`, `review_expired_pending_resolution`, or `confirmed`; the shop from those plus `waiting` and `checked_in`. Cancelling withdraws a submitted proof. GroomBox does not enforce the policy text; it guides whether the shop refunds the deposit outside the app.
+
+**Late payment reports:** `submit_payment_proof` refuses once the hold has run out, even before `expire_holds` has run, because the slot may already belong to someone else.
+
 ### Security & RLS
 - **Payment proof screenshots are private** - short-lived signed URLs only, readable by the submitter and permitted reviewers
+- **The booking code is the link secret**: 12 random Crockford base32 characters. `get_booking_by_code` returns only client-facing fields to anyone holding it. `claim_guest_booking` moves a guest-created booking to the caller's session so it can be paid or cancelled from another device. A booking created by a signed-in account is managed by signing in
+- **Guest abuse limits**: the bot check on anonymous sign-in, Supabase Auth rate limits, and `create_online_booking` refusing a caller with two unexpired holds
 - **Guests use Supabase anonymous sessions** protected by the bot check; upgrading links a Google or Facebook identity to the same user
 - **Public data goes through views** that expose only public columns (`public_branches`, `public_branch_services`, `public_branch_staff`)
 - **The directory is for signed-in, non-guest users only**, limited to published branches of listed organizations; a shop's own booking page never shows other shops
 - `SECURITY DEFINER` only where a function must cross the caller's RLS limits (for example a client creating a booking inside an organization), and every such function performs its own access checks
-- **Restricted organizations**: members are locked out of every branch; the owner can still read statements and payment instructions
+- **Restricted organizations**: members are locked out of every branch; the owner can still read statements and GroomBox's payment instructions (`platform_billing_details`)
 
 ### File Storage
 - **5 MB max file size** for all uploads
@@ -327,7 +341,7 @@ At completion, report:
 // Check conflicts with: blocking bookings, unexpired holds, review-blocked bookings, staff time off, branch closures
 // Always snapshot payment instructions and services at hold creation time
 // "Any available" picks the qualifying staff member with the fewest booked minutes that day
-// Store metadata in JSONB: policy_acceptance_metadata, cancellation_metadata
+// Store metadata in JSONB: policy_acceptance_metadata, cancellation_metadata, refund_metadata
 ```
 
 ### Shop Onboarding
@@ -358,8 +372,9 @@ While a branch is published, the setup screens refuse to remove the last of any 
 - Jobs run inside Postgres and must be **idempotent**
 - `expire_holds`: unpaid `held` past `hold_expires_at` → `hold_expired` (releases the slot)
 - `expire_reviews`: `payment_submitted` or `needs_resubmission` past `review_expires_at` → `review_expired_pending_resolution` (keeps the slot, notifies both sides)
-- `issue_fee_statements`: on a cut-off date, one statement per organization for unbilled entries at or above the statement minimum
-- `restrict_overdue_organizations`: statements past `due_at` → organization `restricted`
+- `remind_pending_reviews`: notifies deposit reviewers once when a `payment_submitted` booking has an hour or less of review time left
+- `issue_fee_statements`: just after a cut-off date ends in `Asia/Manila`, one statement per organization for unbilled entries at or above the statement minimum
+- `restrict_overdue_organizations`: `issued` statements past `due_at` → `overdue`, and their organizations → `restricted` with reason `overdue_statement`
 - Notifications are in-app rows only; no email, SMS, or push in the first release
 
 ### Multi-Service Bookings
@@ -368,24 +383,26 @@ While a branch is published, the setup screens refuse to remove the last of any 
 - Preserve the selected services, staff, and time through the guest or sign-in step
 
 ### Proof of Payment
-- **Require policy acceptance BEFORE creating the hold**
+- **Require acceptance of the cancellation policy and the privacy notice BEFORE creating the hold**; both are recorded in `policy_acceptance_metadata`
 - Required fields: payment reference number, amount paid, method
 - Optional: screenshot, note
 - Reporting payment stops the hold timer and starts the review timer
 - Allow resubmission while in `needs_resubmission`; at most one `submitted` proof per booking at a time
+- Requesting resubmission and each new proof reset `review_expires_at` to now plus the review time
 - Show a warning that payments happen outside GroomBox
 
 ### Walk-ins, Checkout, and Daily Close
-- Walk-ins enter as `waiting` with a per-branch, per-day queue number; `start_service` assigns staff and the time range
-- `complete_checkout` is one transactional RPC: sale, items, payments, commission, deposit deduction, and booking completion
+- Walk-ins enter as `waiting` with a per-branch, per-business-date queue number; `start_service` assigns staff and the time range
+- `complete_checkout` is one transactional RPC: sale, items, tips per staff member (`sale_tips`), payments, commission, deposit deduction, and booking completion
+- The daily close's expected cash is the opening float plus cash sale payments. Convenience fees collected that day are shown as owed to GroomBox, not counted as cash
 - A closed business day rejects new or changed sales until the owner reopens it
 - The daily close requires every visit of that business day (`waiting`, `confirmed`, `checked_in`, `in_service`) to be completed, cancelled, or marked no-show. Online bookings still waiting on a deposit decision (`held`, `payment_submitted`, `needs_resubmission`, `review_expired_pending_resolution`) do not block the close; they stay in the deposits list
 
 ### Fee Billing and Restriction
-- One cut-off schedule for all organizations, set in `platform_settings`
+- One cut-off schedule for all organizations, set in `platform_settings`: weekly on a weekday, semi-monthly on the 15th and last day, or monthly on the last day, all in `Asia/Manila`
 - Statements are per organization with a branch breakdown; balances under the statement minimum carry over
-- Fee entries are insert-only; corrections are `adjustment` entries added by a platform admin
-- `mark_statement_paid` restores access when no other statement is overdue
+- Fee entry amounts never change and entries are never deleted; corrections are `adjustment` entries added by a platform admin. Only `statement_id` changes, when billed or when `void_statement` releases the entries
+- An organization records why it is restricted (`overdue_statement` or `manual`). `mark_statement_paid` and `void_statement` restore access only for `overdue_statement` with nothing else overdue; a manual restriction is lifted only by `set_organization_access`
 - Restriction locks members out of the app; booking links stay live and keep accepting bookings
 
 ### Platform Admins
@@ -393,12 +410,13 @@ While a branch is published, the setup screens refuse to remove the last of any 
 
 ## Slot Generation Rules
 
-Generate bookable start times from:
-- Branch operating hours and closures (in the branch timezone)
-- Staff shifts at the branch and staff time off
+Generate bookable start times for one business date from:
+- Branch operating hours and closures (in the branch timezone), including hours that close the next day
+- Staff shifts at the branch and staff time off, including shifts that end the next day
 - Services the staff member performs
-- Total duration of the chosen services plus buffer time
+- Total duration of the chosen services plus the largest buffer among them, added once at the end; the whole range must fit inside the hours and the shift
 - Blocking bookings (respecting the state machine rules above)
+- The organization's `slot_interval_minutes` (steps from opening time), `min_notice_minutes`, and `booking_horizon_days`
 
 ## Demo/Seed Data
 
@@ -407,7 +425,7 @@ Create via **seed script or documented Supabase Auth admin process** (NOT migrat
 - Two organizations: one with two branches, one with one branch and `restricted` access
 - Organizations with `org_category` values from the launch segment (salon, barbershop, or spa)
 - Service categories, service catalogue, branch offerings and overrides, staff, shifts, time off
-- Branches with address, city/area, timezone, hours, closures, photos, payment instructions and QR
+- Branches with address, city/area, timezone, hours, closures, photos, payment instructions and QR, including a spa branch open past midnight with bookings that cross midnight
 - Bookings in ALL lifecycle states, payment proofs in every status
 - Completed sales and one closed business day
 - Fee entries, one paid statement, one issued, one overdue

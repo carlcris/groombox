@@ -25,7 +25,7 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/b/:branchSlug` | Branch page: services, staff, hours, book button |
 | `/b/:branchSlug/book` | Booking flow (steps below) |
 | `/o/:orgSlug` | Organization page: branches |
-| `/booking/:bookingCode` | Booking status, payment details, report payment. Also the booking detail for signed-in clients |
+| `/booking/:bookingCode` | Booking status, payment details, report payment. Also the booking detail for signed-in clients. Opens on any device; see "Opening a booking from its link" |
 | `/sign-in`, `/sign-up` | Sign-in for clients and members; owner sign-up |
 | `/invite/:code` | Accept a member invite |
 | `/onboarding` | Owner's first organization and branch setup (signed-in owner with no organization) |
@@ -50,14 +50,14 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/shop/:branchId/deposits` | Deposits to review | Owner, manager, permitted staff |
 | `/shop/:branchId/visit/:bookingId` | Visit detail and checkout | All |
 | `/shop/:branchId/close` | Daily close | Owner, manager |
-| `/shop/:branchId/setup` | Branch hours, closures, photos, service offerings and price overrides, staff shifts and time off | Owner, manager |
+| `/shop/:branchId/setup` | Branch hours (including past midnight), closures, photos, service offerings and price overrides, staff shifts and time off | Owner, manager |
 | `/shop/clients` | Client list and detail | Owner, manager |
 | `/shop/notifications` | Notification list | All |
 | `/shop/setup/organization` | Organization name, logo, and category | Owner |
 | `/shop/setup/services` | Service catalogue | Owner |
 | `/shop/setup/staff` | Staff profiles, branch and service assignments, commission | Owner |
-| `/shop/setup/branches` | Branches, address, payment details, publish and unpublish | Owner |
-| `/shop/setup/policies` | Deposit rule, hold and review times, cancellation policy, directory listing | Owner |
+| `/shop/setup/branches` | Branches, address, business day start, payment details, publish and unpublish | Owner |
+| `/shop/setup/policies` | Deposit rule, hold and review times, booking window, cancellation policy, directory listing | Owner |
 | `/shop/team` | Members and invites | Owner |
 | `/shop/billing` | Fee statements and how to pay | Owner |
 | `/shop/restricted` | Restriction notice | All, when restricted |
@@ -67,7 +67,7 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | Route | Screen |
 |---|---|
 | `/admin/statements` | Statements across organizations |
-| `/admin/statements/:id` | Statement detail, mark paid, add adjustment |
+| `/admin/statements/:id` | Statement detail, mark paid, void, add adjustment |
 | `/admin/organizations` | Organizations, restrict or restore |
 | `/admin/settings` | Fee, cut-off, grace period, statement minimum, GroomBox's payment details |
 
@@ -85,15 +85,17 @@ After sign-in, a user with both a client profile and a membership lands on the s
 1. **Branch page.** The client sees services grouped by category with price and duration, and taps "Book".
 2. **Services.** Pick one or more. A running total and total duration show at the bottom.
 3. **Staff.** Pick a staff member who performs all chosen services, or "Any available".
-4. **Date and time.** Pick a date; open start times load for that date. Unavailable days are disabled.
+4. **Date and time.** Pick a date, from today up to the shop's booking horizon; open start times load for that date. Unavailable days are disabled. At a branch open past midnight, times after midnight appear at the end of the opening day's list, marked with the next day, for example "1:00 AM (Sun)".
 5. **Details.** A signed-in client confirms name and mobile number. A visitor chooses "Continue as guest" (name and mobile number) or signs in.
-6. **Review.** Shows services, staff, time, service total, deposit, convenience fee, amount due now, balance due at the shop, and the cancellation policy. The client ticks to accept the policy and taps "Hold my slot".
+6. **Review.** Shows services, staff, time, service total, deposit, convenience fee, amount due now, balance due at the shop, and the cancellation policy. The client ticks to accept the cancellation policy and the privacy notice (both linked) and taps "Hold my slot".
 7. **Pay.** The slot is held. The screen shows a countdown, the amount due, and the branch's payment details and QR. The client pays in their own e-wallet app.
 8. **Report payment.** The client enters the reference number, amount, and method, optionally attaches a screenshot, and submits.
 9. **Waiting for review.** The booking page shows "Payment under review" and updates live.
 10. **Result.** Confirmed, or "Please resubmit" with the shop's note, or rejected.
 
 If the selected time is taken while the client is on step 5 or 6, the hold fails with a clear message and returns them to step 4 with fresh times.
+
+If the hold runs out before the client reports payment, step 8 is refused: "Your hold ran out. If you already paid, contact the shop", with the shop's contact number and "Pick a new time". A session that already has two unexpired holds cannot start a third.
 
 A guest is prompted to save the booking link and offered "Create an account to track your bookings" after step 8.
 
@@ -113,12 +115,15 @@ stateDiagram-v2
     payment_submitted --> needs_resubmission: staff asks again
     payment_submitted --> payment_rejected: staff rejects
     payment_submitted --> review_expired_pending_resolution: review time passes
+    payment_submitted --> cancelled: client or staff cancels
 
     needs_resubmission --> payment_submitted: client resubmits
     needs_resubmission --> review_expired_pending_resolution: review time passes
+    needs_resubmission --> cancelled: client or staff cancels
 
     review_expired_pending_resolution --> confirmed: staff accepts
     review_expired_pending_resolution --> payment_rejected: staff rejects
+    review_expired_pending_resolution --> cancelled: client or staff cancels
 
     confirmed --> checked_in: client arrives
     confirmed --> cancelled: client or staff cancels
@@ -126,6 +131,7 @@ stateDiagram-v2
     waiting --> in_service: staff starts
     waiting --> cancelled: client leaves
     checked_in --> in_service: staff starts
+    checked_in --> cancelled: staff cancels
     in_service --> completed: checkout done
 
     completed --> [*]
@@ -150,12 +156,14 @@ stateDiagram-v2
 
 The convenience fee entry is created on the move to `confirmed` from a deposit review, and never removed by a later state.
 
+Clients cancel before the start time. Cancelling a booking with a reported payment withdraws the proof; any refund is settled between the shop and the client, and a deposit reviewer records the outcome on the booking. The same applies to rejected and no-show bookings.
+
 ## 6. Flow: deposit review
 
-1. A badge on "Deposits" shows the number waiting. Bookings flagged for resolution sort first.
-2. The reviewer opens one: client, services, time, amount due, and the reported reference number, amount, method, and screenshot.
+1. A badge on "Deposits" shows the number waiting. Bookings flagged for resolution sort first. Reviewers get a notification when an hour of review time is left.
+2. The reviewer opens one: client, services, time, amount due, and the reported reference number, amount, method, and screenshot. A reported amount that differs from the amount due is highlighted with the difference.
 3. The reviewer checks the shop's e-wallet outside GroomBox.
-4. They choose **Accept**, **Ask to resubmit** (with a note), or **Reject** (with a reason). A booking flagged for resolution offers only **Accept** or **Reject**, following the state diagram.
+4. They choose **Accept**, **Ask to resubmit** (with a note), or **Reject** (with a reason). Accept means the full amount due arrived; a short payment is sent back for resubmission or rejected. Asking to resubmit gives the client a fresh review time. A booking flagged for resolution offers only **Accept** or **Reject**, following the state diagram.
 5. The client's booking page updates live and a notification is created.
 
 ## 7. Flow: walk-in
@@ -169,27 +177,27 @@ The convenience fee entry is created on the move to `confirmed` from a deposit r
 
 1. Tap a confirmed appointment and "Check in" when the client arrives.
 2. Tap "Start" when service begins.
-3. Tap "Checkout": the items are pre-filled from the booking. Adjust a price, add an item, apply a discount, enter a tip.
-4. The screen shows the total, the deposit already paid, and the balance.
-5. Record how the balance was paid, by one or more methods.
+3. Tap "Checkout": the items are pre-filled from the booking. Adjust a price, add an item, apply a discount, and enter a tip for each staff member on the sale.
+4. The screen shows the total, the deposit already paid, and the balance. If the deposit is larger than the bill, the balance is zero and the screen shows the amount to refund outside GroomBox.
+5. Record how the balance was paid, by one or more methods. "Complete" stays disabled until the payments add up to the balance exactly; for cash, enter the cash received and the screen shows the change.
 6. Tap "Complete". The visit closes, the sale and commission are stored, and the floor updates.
 
 ## 9. Flow: daily close
 
-1. Open "Close" for the branch. The business date defaults to today.
+1. Open "Close" for the branch. The business date defaults to the current one, so a spa closing at 2:00 AM still closes the day it opened.
 2. The screen lists the day's unfinished visits (waiting, confirmed, checked in, in service); each must be completed, cancelled, or marked no-show first. Bookings still waiting on a deposit decision do not block the close and stay in the deposits list.
-3. Review totals: sales by payment method, deposits received today, discounts, tips, and commission and tips per staff member.
-4. Enter the counted cash. The difference from expected cash is shown.
+3. Review totals: sales by payment method, deposits received that day, discounts, tips, commission and tips per staff member, and convenience fees collected for GroomBox (shown separately; not cash in the drawer).
+4. Enter the opening float and the counted cash. Expected cash is the float plus cash sales; the difference is shown.
 5. Tap "Close day". The day locks. The owner can reopen it.
 
 ## 10. Flow: owner onboarding
 
 1. Sign up, then name the organization and choose its category.
-2. Add the first branch: name, address, city, area, hours.
+2. Add the first branch: name, address, city, area, hours. A day's hours can close after midnight ("closes next day"), up to the start of the next business day (5:00 AM unless changed).
 3. Add deposit payment details and a QR image.
 4. Add services.
 5. Add staff and their shifts.
-6. Set the deposit rule and cancellation policy; defaults are prefilled.
+6. Set the deposit rule, booking window (time between start times, minimum notice, how far ahead), and cancellation policy; defaults are prefilled.
 7. Accept the terms, which include the fee rules and directory listing.
 8. Publish. The screen shows the booking link and a printable QR code.
 
@@ -214,10 +222,10 @@ Unpublishing stops new online bookings; the branch page shows "This shop is not 
 
 ## 13. Flow: restriction
 
-1. A statement passes its due date unpaid; the organization becomes restricted.
-2. Any member opening the shop side is sent to the restriction notice. Staff and managers see "Ask the owner to settle the account". The owner sees the overdue statements and payment instructions.
+1. A statement passes its due date unpaid; it becomes overdue and the organization becomes restricted.
+2. Any member opening the shop side is sent to the restriction notice. Staff and managers see "Ask the owner to settle the account". The owner sees the overdue statements and GroomBox's payment instructions.
 3. Booking links keep working. New deposits wait for review.
-4. The admin marks the statements paid; access returns on the next page load.
+4. The admin marks the statements paid, or voids one issued in error; access returns on the next page load. If the admin restricted the organization by hand, only the admin's restore lifts it.
 
 ## 14. Flow: guest to account
 
@@ -226,9 +234,18 @@ Unpublishing stops new online bookings; the branch page shows "This shop is not 
 3. They sign in with Google or Facebook; the identity is attached to the guest session.
 4. Their existing bookings appear under "Bookings".
 
-A guest who clears their browser or changes device before upgrading can still reach a booking through its link, which carries the booking code.
+A guest who clears their browser or changes device before upgrading can still reach a booking through its link, which carries the booking code (see the next section).
 
-## 15. Empty, loading, and error states
+## 15. Opening a booking from its link
+
+The booking code works like a key: anyone who has the link can see the booking, so the code is long and random (`7K2M-QX9D-4HTB`).
+
+1. The page loads the booking with `get_booking_by_code`. The creator, a signed-in client who owns it, and branch members see the full page as usual.
+2. Anyone else holding the link sees the status, shop, time, services, amounts, and payment details, read-only. The client's mobile number and the shop's notes never appear.
+3. If the booking was made as a guest, the page offers "Manage this booking here". Tapping it makes this device's session the booking's owner, so the client can report payment, cancel, or create an account. The old device loses access.
+4. If the booking was made by a signed-in account, the page offers "Sign in to manage this booking" instead.
+
+## 16. Empty, loading, and error states
 
 | Situation | Behaviour |
 |---|---|

@@ -77,10 +77,11 @@ Priority: **M** = must have for the pilot, **S** = should have, **C** = could mo
 | SET-1 | Service catalogue per organization: category, name, duration, buffer time, price, "starting at" flag | M |
 | SET-2 | Each branch chooses which services it offers and can override the price | M |
 | SET-3 | Staff profiles: name, title, photo, branches, services they perform, weekly shifts, time off | M |
-| SET-4 | Branch profile: address, area, hours, closures, photos, contact number | M |
+| SET-4 | Branch profile: address, area, hours, closures, photos, contact number. Hours and shifts can run past midnight, for example 2:00 PM to 2:00 AM, and count toward the day they open | M |
 | SET-5 | Deposit payment details per branch: account name, number, method, QR image | M |
-| SET-6 | Deposit rule per organization (fixed amount or percentage of the service total), with an optional per-service override | M |
+| SET-6 | Deposit rule per organization, as a fixed amount per service or a percentage of each service's price, with an optional per-service override. A booking's deposit is the sum over its services, each capped at the service's price | M |
 | SET-7 | Hold time and review time for deposits, and cancellation policy text | M |
+| SET-11 | Booking window per organization: time between start times (default 15 minutes), minimum notice (default 1 hour), and how far ahead clients can book (default 30 days) | M |
 | SET-8 | Commission: default percentage per staff member, optional override per staff and service | M |
 | SET-9 | An organization can opt out of the directory | M |
 | SET-10 | An owner publishes a branch only when it has an address, city, and area; operating hours; at least one offered service; at least one bookable staff member with a shift there; complete payment details with a QR image; and the owner has accepted the terms. While published, the branch cannot lose the last of these items until it is unpublished | M |
@@ -93,11 +94,13 @@ Priority: **M** = must have for the pilot, **S** = should have, **C** = could mo
 | BKG-2 | A client picks one or more services, a staff member or "any available", and a time from live availability | M |
 | BKG-3 | Two clients can never hold the same staff member at overlapping times | M |
 | BKG-4 | A guest books with name and mobile number, with no account | M |
-| BKG-5 | Before confirming, the client sees the service total, deposit, convenience fee, amount due now, and the cancellation policy, and accepts the policy | M |
+| BKG-5 | Before confirming, the client sees the service total, deposit, convenience fee, amount due now, and the cancellation policy, and accepts the policy and the privacy notice | M |
 | BKG-6 | A new online booking holds the slot until the hold time runs out | M |
 | BKG-7 | Staff can create an appointment on a client's behalf; it is confirmed immediately with no deposit and no fee | M |
-| BKG-8 | Clients and staff can cancel; staff can reschedule | M |
+| BKG-8 | Clients cancel before the start time, from any status up to confirmed; staff can also cancel walk-ins and arrived clients, and can reschedule | M |
 | BKG-9 | A client can rebook a past appointment in two taps | S |
+| BKG-10 | The booking link opens the booking on any device. A guest on another device can take the booking over to pay or cancel it there | M |
+| BKG-11 | A cleaning buffer after services blocks the staff member's time but is not shown to the client | M |
 
 ### 7.4 Deposits
 
@@ -105,11 +108,11 @@ Priority: **M** = must have for the pilot, **S** = should have, **C** = could mo
 |---|---|---|
 | DEP-1 | The booking shows the amount due and the branch's payment details as they were when the booking was made | M |
 | DEP-2 | The client reports payment with a reference number, amount, and method, and may attach a screenshot | M |
-| DEP-3 | Reporting payment stops the hold timer and starts the review timer | M |
-| DEP-4 | A manager, owner, or permitted staff member accepts the payment, rejects it, or asks the client to resubmit | M |
+| DEP-3 | Reporting payment stops the hold timer and starts the review timer. Asking for resubmission and each new report restart the review timer. A report after the hold has run out is refused, and the client is told to contact the shop if they already paid | M |
+| DEP-4 | A manager, owner, or permitted staff member accepts the payment, rejects it, or asks the client to resubmit. Accepting means the full amount due was received; a short payment is sent back for resubmission or rejected | M |
 | DEP-5 | A booking with a reported payment is never released automatically; if the review time runs out it is flagged for resolution and keeps its slot | M |
 | DEP-6 | An unpaid hold that runs out releases the slot | M |
-| DEP-7 | Refunds happen outside GroomBox between the shop and the client; the booking records the outcome | S |
+| DEP-7 | Refunds happen outside GroomBox between the shop and the client; the booking records the outcome, for cancelled, rejected, and no-show bookings and for a deposit larger than the final bill | S |
 
 ### 7.5 Floor
 
@@ -126,11 +129,11 @@ Priority: **M** = must have for the pilot, **S** = should have, **C** = could mo
 
 | ID | Requirement | Priority |
 |---|---|---|
-| CHK-1 | Checkout sets final prices, adds extra items, applies a discount, records a tip, and deducts the deposit | M |
-| CHK-2 | Checkout records one or more payments by method: cash, GCash, Maya, card, bank transfer, other | M |
+| CHK-1 | Checkout sets final prices, adds extra items, applies a discount, records a tip for each staff member on the sale, and deducts the deposit (never more than the bill) | M |
+| CHK-2 | Checkout records one or more payments by method: cash, GCash, Maya, card, bank transfer, other. Payments add up to the balance exactly; for cash the screen shows the change | M |
 | CHK-3 | Commission is calculated per item at checkout and stored | M |
-| CLS-1 | Daily close per branch: sales by payment method, deposits received, discounts, tips, and commission and tips per staff member | M |
-| CLS-2 | Cash count: expected cash, counted cash, and the difference | M |
+| CLS-1 | Daily close per branch: sales by payment method, deposits received, discounts, tips, commission and tips per staff member, and convenience fees collected for GroomBox | M |
+| CLS-2 | Cash count: opening float, expected cash (float plus cash sales), counted cash, and the difference | M |
 | CLS-3 | A closed day is locked; an owner can reopen it | S |
 
 ### 7.7 Clients (shop side)
@@ -158,7 +161,7 @@ The directory is marked **C** because a pilot with 3–5 shops will leave it nea
 | ID | Requirement | Priority |
 |---|---|---|
 | NOT-1 | In-app notification list for members and clients, updating live while the app is open | M |
-| NOT-2 | Events: new online booking, payment reported, payment accepted or rejected, resubmission requested, booking cancelled, review time running out, statement issued, statement overdue | M |
+| NOT-2 | Events: new online booking, payment reported, payment accepted or rejected, resubmission requested, booking cancelled, review time running out (an hour left), statement issued, statement overdue | M |
 
 Nothing is sent outside the app in the first release.
 
@@ -170,21 +173,21 @@ Nothing is sent outside the app in the first release.
 | FEE-2 | The fee is added on top of the deposit and shown to the client as a separate line | M |
 | FEE-3 | The fee is owed by the organization once the deposit is accepted, and stays owed if the booking is later cancelled, refunded, or a no-show | M |
 | FEE-4 | Staff-entered appointments and walk-ins carry no fee | M |
-| FEE-5 | One cut-off schedule for all organizations, set by the platform admin | M |
+| FEE-5 | One cut-off schedule for all organizations, set by the platform admin: weekly, semi-monthly (the 15th and the last day), or monthly (the last day), in Philippine time | M |
 | FEE-6 | At each cut-off, one statement per organization lists the fee entries, with a breakdown by branch | M |
 | FEE-7 | The owner sees statements and how to pay GroomBox, and pays outside the app | M |
 | FEE-8 | A platform admin marks a statement paid, with a payment reference | M |
 | FEE-9 | A balance below the statement minimum carries into the next period | S |
-| FEE-10 | A platform admin can add an adjustment entry to correct a statement | S |
+| FEE-10 | A platform admin can add an adjustment entry to correct a statement, or void a statement issued in error so its entries are billed again at the next cut-off | S |
 
 ### 7.11 Unpaid statements
 
 | ID | Requirement | Priority |
 |---|---|---|
 | RST-1 | When a statement is unpaid after the grace period, the organization is restricted | M |
-| RST-2 | A restricted organization's owner and members cannot use the app at any branch, except that the owner can see statements and payment instructions | M |
+| RST-2 | A restricted organization's owner and members cannot use the app at any branch, except that the owner can see statements and GroomBox's payment instructions | M |
 | RST-3 | Booking links stay live and clients can still book a restricted organization | M |
-| RST-4 | Access returns as soon as the overdue statements are marked paid | M |
+| RST-4 | Access returns as soon as the overdue statements are marked paid or voided. A restriction the admin applied by hand stays until the admin lifts it | M |
 
 Consequence, accepted: while restricted, nobody can review deposits. Reported payments are never auto-released (DEP-5), so those bookings wait in "needs resolution" until access returns.
 
@@ -194,7 +197,7 @@ Consequence, accepted: while restricted, nobody can review deposits. Reported pa
 |---|---|---|
 | ADM-1 | Set the fee percentage, minimum, maximum, cut-off schedule, grace period, and statement minimum | M |
 | ADM-2 | List statements across organizations; filter by status | M |
-| ADM-3 | Mark a statement paid; restrict or restore an organization by hand | M |
+| ADM-3 | Mark a statement paid or void it; restrict or restore an organization by hand | M |
 | ADM-4 | Platform admins are assigned directly in the database | M |
 
 ## 8. Business rules
@@ -207,6 +210,8 @@ Consequence, accepted: while restricted, nobody can review deposits. Reported pa
 6. A booking is one client, one staff member, and one or more services back to back.
 7. Commission is a percentage of each item's price after discount. Tips go fully to the staff member who performed the service.
 8. All times are stored with time zone. Each branch has a time zone, defaulting to Philippine time.
+9. A branch's business day starts at a set time, 5:00 AM by default, so a visit finished at 1:30 AM counts toward the previous day's close.
+10. Money is rounded to the centavo. The fee is rounded before its minimum and maximum apply.
 
 ## 9. Assumptions to confirm
 
@@ -235,12 +240,12 @@ These were open after the plan review. Each is built as stated here unless chang
 | Owners do not pay statements | Short cut-off periods, grace period, restriction |
 | Staff miss a new booking because nothing is sent outside the app | Live badge and notification list; revisit push or email after the pilot |
 | Google sign-in is blocked inside Messenger and Instagram browsers | Guest booking needs no sign-in; account upgrade prompts the client to open in their browser |
-| Booking spam through guest sessions | Bot check on guest sessions and database rate limits |
+| Booking spam through guest sessions | Bot check on guest sessions, Supabase Auth rate limits, and at most two unexpired holds per session |
 | Fake or mistaken payment reports | Review step, reference number, and optional screenshot |
 
 ## 11. Outside the code
 
 - **Tax**: GroomBox invoices owners for fees the shop collected. Confirm invoicing and receipt duties with an accountant.
-- **Data privacy**: the app stores personal data and notes about clients. It needs a privacy policy, consent at booking, and a check on registration duties.
+- **Data privacy**: the app stores personal data and notes about clients. It needs a privacy policy and a check on registration duties. Online bookings record acceptance of the privacy notice (BKG-5); for walk-ins and staff-entered appointments the shop obtains consent at the counter. Confirm both with counsel.
 - **Terms for owners**: must state that shops are listed in the directory by default, the fee rules, and the restriction rule.
 - **Facebook login**: needs app review and business verification before public use.
