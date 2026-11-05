@@ -58,11 +58,11 @@ set local role authenticated;
 
 -- 1–2. Members by branch scope and access status
 select pg_temp.act_as('10000000-0000-0000-0000-000000000002', false);
-select is(pg_temp.visible_booking_ids(), '01,02,03,04,06,07,08,09', 'the owner reads every booking of the organization');
+select is(pg_temp.visible_booking_ids(), '01,02,03,04,06,07,08,09,10,11,12,13,14', 'the owner reads every booking of the organization');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000003', false);
 select is(pg_temp.visible_booking_ids(), '01', 'a manager reads only their branch''s bookings');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000004', false);
-select is(pg_temp.visible_booking_ids(), '02,03,04,06,07,08,09', 'staff read only their branch''s bookings');
+select is(pg_temp.visible_booking_ids(), '02,03,04,06,07,08,09,10,11,12,13,14', 'staff read only their branch''s bookings');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000005', false);
 select is(pg_temp.visible_booking_ids(), '', 'the owner of a restricted organization reads no bookings');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000006', false);
@@ -84,13 +84,13 @@ select is(pg_temp.visible_booking_ids(), '02,03,07,09', 'a guest reads the booki
 select pg_temp.act_as('10000000-0000-0000-0000-000000000003', false);
 select is(
   (select count(*)::integer from public.clients where id::text like '90000000-%'),
-  2,
+  3,
   'a manager reads the organization''s client list'
 );
 select pg_temp.act_as('10000000-0000-0000-0000-000000000004', false);
 select results_eq(
   $$ select full_name from public.clients where id::text like '90000000-%' order by full_name $$,
-  $$ values ('Ana Guest'), ('Bea Lim') $$,
+  $$ values ('Ana Guest'), ('Bea Lim'), ('Rico Dela Cruz') $$,
   'staff read only the clients on their branch''s bookings'
 );
 select throws_ok(

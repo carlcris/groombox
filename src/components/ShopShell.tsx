@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { Bell, LayoutList, LogOut, Menu, Settings, SlidersHorizontal, Users, Wallet, type LucideIcon } from "lucide-react";
+import { Bell, CalendarDays, Contact, LayoutList, LogOut, Menu, Settings, SlidersHorizontal, Users, Wallet, type LucideIcon } from "lucide-react";
 import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { GroomBoxLogo } from "@/components/GroomBoxLogo";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,11 @@ type NavigationItem = {
   label: string;
   icon: LucideIcon;
   link:
-    | { to: "/shop/$branchId/floor" | "/shop/$branchId/setup" | "/shop/$branchId/deposits"; params: { branchId: string } }
-    | { to: "/shop/team" | "/shop/notifications" | "/shop/setup" };
+    | {
+        to: "/shop/$branchId/floor" | "/shop/$branchId/calendar" | "/shop/$branchId/setup" | "/shop/$branchId/deposits";
+        params: { branchId: string };
+      }
+    | { to: "/shop/team" | "/shop/notifications" | "/shop/setup" | "/shop/clients" };
   badge?: { count: number; label: string };
   // Phones show the main items in the bottom bar and the rest under More.
   inBottomBar: boolean;
@@ -71,6 +74,13 @@ export function ShopShell({
       link: { to: "/shop/$branchId/floor", params: { branchId: activeBranchId } },
       inBottomBar: true,
     });
+    items.push({
+      key: "calendar",
+      label: messages.shop.calendar,
+      icon: CalendarDays,
+      link: { to: "/shop/$branchId/calendar", params: { branchId: activeBranchId } },
+      inBottomBar: true,
+    });
   }
   if (reviewsDeposits && activeBranchId) {
     items.push({
@@ -81,6 +91,9 @@ export function ShopShell({
       badge: { count: pendingDeposits, label: messages.deposits.toReview },
       inBottomBar: true,
     });
+  }
+  if (isActive && currentMembership.role !== "staff") {
+    items.push({ key: "clients", label: messages.shop.clients, icon: Contact, link: { to: "/shop/clients" }, inBottomBar: true });
   }
   if (isActive && activeBranchId && currentMembership.role !== "staff") {
     items.push({
@@ -101,7 +114,8 @@ export function ShopShell({
     icon: Bell,
     link: { to: "/shop/notifications" },
     badge: { count: unreadCount, label: messages.notifications.unread },
-    inBottomBar: true,
+    // Phones keep Floor, Calendar, Deposits, and Clients in the bottom bar (app flow §3).
+    inBottomBar: false,
   });
 
   async function signOut() {
@@ -161,11 +175,18 @@ export function ShopShell({
           ))}
         <button
           type="button"
-          className="flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground"
+          className="relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground"
           onClick={() => setMoreOpen(true)}
         >
           <Menu className="size-6" aria-hidden />
           {messages.shop.more}
+          <NavigationBadge
+            badge={{
+              count: items.filter((item) => !item.inBottomBar).reduce((sum, item) => sum + (item.badge?.count ?? 0), 0),
+              label: messages.notifications.unread,
+            }}
+            className="absolute top-1 right-1/4"
+          />
         </button>
       </nav>
 
@@ -181,7 +202,8 @@ export function ShopShell({
               .map((item) => (
                 <Link key={item.key} {...item.link} className={linkClassName} onClick={() => setMoreOpen(false)}>
                   <item.icon className="size-6" aria-hidden />
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  <NavigationBadge badge={item.badge} />
                 </Link>
               ))}
             <Button variant="ghost" className="justify-start" onClick={() => void signOut()}>

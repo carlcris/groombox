@@ -17,9 +17,10 @@
 --
 -- Bookings are placed relative to the time of the seed: a confirmed BGC booking that crosses
 -- midnight; at Makati a guest's held and expired holds, a client's cancelled booking, and bookings
--- in every deposit review status; and a confirmed booking at the restricted Kanto Barbers. Payment
--- proofs cover every status, and each accepted deposit has its fee entry. Phase 5 adds walk-ins and
--- visits in progress, phase 6 completed sales, and phase 8 statements (docs/backend-schema.md §15).
+-- in every deposit review status, and today's floor (a waiting walk-in, an arrived appointment, a
+-- walk-in in service), yesterday's no-show, and tomorrow's appointment; and a confirmed booking at the
+-- restricted Kanto Barbers. Payment proofs cover every status, and each accepted deposit has its fee
+-- entry. Phase 6 adds completed sales and phase 8 statements (docs/backend-schema.md §15).
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -419,3 +420,45 @@ values
    'Bea Lim booked Swedish massage at BGC Late Night.', 'booking', '80000000-0000-0000-0000-000000000001'),
   ('10000000-0000-0000-0000-000000000007', '20000000-0000-0000-0000-000000000001', 'booking_cancelled',
    'Booking cancelled', 'You cancelled your haircut at Makati.', 'booking', '80000000-0000-0000-0000-000000000004');
+
+-- Today's floor at Makati, in Manila's business date: a waiting walk-in who would like Jenny, an
+-- appointment with Carlo whose client has arrived, and a walk-in with Jenny already in service; plus
+-- yesterday's no-show and tomorrow's appointment, both entered by the shop.
+insert into public.clients (id, organization_id, user_id, full_name, mobile_number, notes)
+values ('90000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000001', null, 'Rico Dela Cruz',
+  '0918 555 0505', 'Sensitive to strong hair dyes. Patch test first.');
+
+insert into public.bookings (
+  id, organization_id, branch_id, client_id, booked_by, staff_id, source, status, start_at, end_at, business_date,
+  service_total, queue_number, checked_in_at, started_at
+)
+select
+  seeded.id, '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', seeded.client_id,
+  '10000000-0000-0000-0000-000000000004', seeded.staff_id, seeded.source::public.booking_source,
+  seeded.status::public.booking_status, seeded.start_at, seeded.start_at + interval '45 minutes',
+  coalesce(private.business_date(seeded.start_at, 'Asia/Manila', '05:00'), manila.today), 350.00, seeded.queue_number,
+  seeded.checked_in_at, seeded.started_at
+from (select private.business_date(now(), 'Asia/Manila', '05:00') as today) as manila
+cross join lateral (
+  values
+    ('80000000-0000-0000-0000-000000000010'::uuid, '90000000-0000-0000-0000-000000000004'::uuid,
+     '70000000-0000-0000-0000-000000000001'::uuid, 'walk_in', 'waiting', null::timestamptz, 1::smallint,
+     null::timestamptz, null::timestamptz),
+    ('80000000-0000-0000-0000-000000000011', '90000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000002',
+     'staff', 'checked_in', now() - interval '5 minutes', null, now() - interval '8 minutes', null),
+    ('80000000-0000-0000-0000-000000000012', '90000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000001',
+     'walk_in', 'in_service', now() - interval '20 minutes', 2, null, now() - interval '20 minutes'),
+    ('80000000-0000-0000-0000-000000000013', '90000000-0000-0000-0000-000000000004', '70000000-0000-0000-0000-000000000002',
+     'staff', 'no_show', (manila.today - 1 + time '15:00') at time zone 'Asia/Manila', null, null, null),
+    ('80000000-0000-0000-0000-000000000014', '90000000-0000-0000-0000-000000000004', '70000000-0000-0000-0000-000000000001',
+     'staff', 'confirmed', (manila.today + 1 + time '14:00') at time zone 'Asia/Manila', null, null, null)
+) as seeded (id, client_id, staff_id, source, status, start_at, queue_number, checked_in_at, started_at);
+
+insert into public.booking_services (
+  booking_id, organization_id, service_id, service_name, duration_minutes, buffer_minutes, price, sort_order
+)
+select booking.id, '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003', 'Haircut', 45, 0, 350.00, 1
+from unnest(array[
+  '80000000-0000-0000-0000-000000000010', '80000000-0000-0000-0000-000000000011', '80000000-0000-0000-0000-000000000012',
+  '80000000-0000-0000-0000-000000000013', '80000000-0000-0000-0000-000000000014'
+]::uuid[]) as booking (id);

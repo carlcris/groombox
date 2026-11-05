@@ -1718,6 +1718,7 @@ export type Database = {
       my_branches: {
         Row: {
           business_day_start: string;
+          current_business_date: string | null;
           id: string;
           name: string;
           organization_id: string;
@@ -1727,6 +1728,7 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           business_day_start?: string | null;
+          current_business_date?: never;
           id?: string | null;
           name?: string | null;
           organization_id?: string | null;
@@ -1735,6 +1737,7 @@ export type Database = {
         };
         Update: {
           business_day_start?: string | null;
+          current_business_date?: never;
           id?: string | null;
           name?: string | null;
           organization_id?: string | null;
@@ -1838,7 +1841,20 @@ export type Database = {
     Functions: {
       accept_invite: { Args: { p_code: string }; Returns: string };
       accept_terms: { Args: { p_organization_id: string }; Returns: undefined };
+      add_walk_in: {
+        Args: {
+          p_branch_id: string;
+          p_client_id?: string;
+          p_client_name?: string;
+          p_client_note?: string;
+          p_mobile_number?: string;
+          p_service_ids: string[];
+          p_staff_id?: string;
+        };
+        Returns: string;
+      };
       cancel_booking: { Args: { p_booking_id: string; p_reason?: string }; Returns: undefined };
+      check_in_booking: { Args: { p_booking_id: string }; Returns: undefined };
       claim_guest_booking: { Args: { p_booking_code: string }; Returns: string };
       create_branch: {
         Args: {
@@ -1894,6 +1910,19 @@ export type Database = {
           branch_id: string;
           organization_id: string;
         }[];
+      };
+      create_staff_booking: {
+        Args: {
+          p_branch_id: string;
+          p_client_id?: string;
+          p_client_name?: string;
+          p_client_note?: string;
+          p_mobile_number?: string;
+          p_service_ids: string[];
+          p_staff_id: string;
+          p_start_at: string;
+        };
+        Returns: string;
       };
       get_available_slots: {
         Args: {
@@ -1956,6 +1985,7 @@ export type Database = {
           service_total: number;
         }[];
       };
+      get_client_notes: { Args: { p_client_id: string }; Returns: string };
       get_invite_preview: {
         Args: { p_code: string };
         Returns: {
@@ -1974,11 +2004,20 @@ export type Database = {
         };
         Returns: string;
       };
+      mark_no_show: { Args: { p_booking_id: string }; Returns: undefined };
+      merge_clients: {
+        Args: { p_duplicate_client_id: string; p_keep_client_id: string };
+        Returns: undefined;
+      };
       record_refund_outcome: {
         Args: { p_amount: number; p_booking_id: string; p_note?: string; p_refunded: boolean };
         Returns: undefined;
       };
       remove_member: { Args: { p_member_id: string }; Returns: undefined };
+      reschedule_booking: {
+        Args: { p_booking_id: string; p_staff_id: string; p_start_at: string };
+        Returns: undefined;
+      };
       review_payment_proof: {
         Args: {
           p_outcome: Database["public"]["Enums"]["proof_status"];
@@ -2003,7 +2042,16 @@ export type Database = {
         };
         Returns: string;
       };
+      search_clients: {
+        Args: { p_branch_id: string; p_limit?: number; p_offset?: number; p_query: string };
+        Returns: {
+          full_name: string;
+          id: string;
+          mobile_number: string;
+        }[];
+      };
       set_branch_hours: { Args: { p_branch_id: string; p_hours: Json }; Returns: undefined };
+      start_service: { Args: { p_booking_id: string; p_staff_id?: string }; Returns: undefined };
       submit_payment_proof: {
         Args: {
           p_amount_paid: number;

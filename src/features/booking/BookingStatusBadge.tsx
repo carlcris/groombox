@@ -31,6 +31,20 @@ const toneClasses: Record<StatusTone, string> = {
   neutral: "bg-neutral-surface text-neutral",
 };
 
+const stripeClasses: Record<StatusTone, string> = {
+  success: "border-l-success",
+  warning: "border-l-warning",
+  danger: "border-l-danger",
+  info: "border-l-info",
+  neutral: "border-l-neutral",
+};
+
+// A calendar block's colours for a status: its surface and the left edge stripe (design brief §5).
+export function bookingStatusBlockClasses(status: BookingStatus): string {
+  const { tone } = statusAppearance[status];
+  return cn(toneClasses[tone], stripeClasses[tone]);
+}
+
 export function BookingStatusBadge({ status }: { status: BookingStatus }) {
   const { icon: Icon, tone } = statusAppearance[status];
   return (

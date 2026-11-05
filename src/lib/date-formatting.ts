@@ -83,7 +83,12 @@ export function branchLocalToIso(localDateTime: string, timeZone: string): strin
 
 // Now, as a datetime-local value at the branch.
 export function branchLocalNow(timeZone: string): string {
-  const parts = readParts(new Date(), timeZone);
+  return isoToBranchLocal(new Date().toISOString(), timeZone);
+}
+
+// A moment as a datetime-local value at the branch ("2026-11-07T10:00").
+export function isoToBranchLocal(isoTimestamp: string, timeZone: string): string {
+  const parts = readParts(new Date(isoTimestamp), timeZone);
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
 }

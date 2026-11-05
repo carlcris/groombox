@@ -16,7 +16,7 @@ const havenBgcBranchId = "30000000-0000-0000-0000-000000000002";
 const havenMakatiBranchId = "30000000-0000-0000-0000-000000000001";
 
 test("an owner takes a new organization from empty to a published branch", async ({ page }) => {
-  const branchId = await createOwnerWithShop(page, `Nara Salon ${test.info().project.name} ${Date.now()}`, "Legaspi");
+  const { branchId } = await createOwnerWithShop(page, `Nara Salon ${test.info().project.name} ${Date.now()}`, "Legaspi");
 
   // The floor shows what is left, and the branch cannot be published yet.
   await expect(page.getByRole("heading", { name: "Finish setting up Legaspi" })).toBeVisible();

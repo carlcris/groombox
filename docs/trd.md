@@ -103,7 +103,7 @@ Each feature folder holds its queries, mutations, schemas, and components. A fea
 |---|---|---|
 | Owner | Whole organization | Whole organization; the only role that edits the organization profile, service catalogue, staff profiles, commission, policies, team, and branch payment details |
 | Manager | Assigned branches, plus the catalogue and client list | At assigned branches: everything staff can write, deposit review, daily close, and branch-level setup (hours, closures, photos, service offerings and price overrides, staff shifts and time off) |
-| Staff | Floor data for assigned branches, the clients on those bookings, the sales they completed, and their own sale items; other clients only through `search_clients` (name and mobile number) | Floor work at assigned branches: walk-ins, appointments and rescheduling, visit status, checkout; deposit review only if permitted |
+| Staff | Floor data for assigned branches, the clients on those bookings (never their notes, which a column grant keeps from them), the sales they completed, and their own sale items; other clients only through `search_clients` (name and mobile number) | Floor work at assigned branches: walk-ins, appointments and rescheduling, visit status, checkout; deposit review only if permitted |
 | Client or guest | Own profile, own bookings and proofs, public branch data | Own profile directly; bookings and proofs through booking functions only |
 | Platform admin | Statements, fee entries, organizations and branches, platform settings | Statements, settings, organization access |
 
@@ -151,7 +151,7 @@ All jobs are idempotent. Cut-off dates: weekly on the set weekday, semi-monthly 
 
 Subscriptions are scoped by branch or by user:
 
-- Floor view: bookings for the open branch and day.
+- Floor view and calendar: the open branch's bookings.
 - Deposit review badge and list: the open branch's payment proofs and bookings.
 - Booking page: the booking, for its creator and the branch's members.
 

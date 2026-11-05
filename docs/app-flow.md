@@ -51,7 +51,8 @@ After sign-in, a user with both a client profile and a membership lands on the s
 | `/shop/:branchId/visit/:bookingId` | Visit detail and checkout | All |
 | `/shop/:branchId/close` | Daily close | Owner, manager |
 | `/shop/:branchId/setup` | Branch hours (including past midnight), closures, photos, service offerings and price overrides, staff shifts and time off | Owner, manager |
-| `/shop/clients` | Client list and detail | Owner, manager |
+| `/shop/clients` | Client list, with search | Owner, manager |
+| `/shop/clients/:clientId` | Client detail: notes, visits, edit, merge a duplicate | Owner, manager |
 | `/shop/notifications` | Notification list | All |
 | `/shop/setup` | Links to the organization-wide setup screens | Owner |
 | `/shop/setup/organization` | Organization name, logo, and category | Owner |

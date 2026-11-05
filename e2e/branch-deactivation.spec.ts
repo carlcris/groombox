@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createOwnerWithShop } from "./account-steps";
+import { addServiceAndStaff, createOwnerWithShop } from "./account-steps";
 import { acceptAndHold, chooseSlot, standInForBotCheck } from "./booking-steps";
 
 // The branch setup screen refuses to deactivate a branch that has upcoming bookings (app flow §10).
@@ -12,29 +12,13 @@ const qrImage = Buffer.from(
 
 test("a branch with an upcoming booking cannot be deactivated", async ({ page, browser }) => {
   const shopName = `Lumen Salon ${test.info().project.name} ${Date.now()}`;
-  const branchId = await createOwnerWithShop(page, shopName, "Ortigas");
+  const { branchId } = await createOwnerWithShop(page, shopName, "Ortigas");
 
   // Publish the branch with one service, one staff member, a shift, and payment details.
   await page.goto("/shop/setup/policies");
   await page.getByRole("button", { name: "Accept the terms" }).click();
   await expect(page.getByText(/You accepted the terms on/)).toBeVisible();
-  await page.goto("/shop/setup/services");
-  await page.getByLabel("Category name").fill("Hair");
-  await page.getByRole("button", { name: "Add category" }).click();
-  await page.getByRole("button", { name: "Add service" }).click();
-  const serviceSheet = page.getByRole("dialog");
-  await serviceSheet.getByLabel("Service name").fill("Blowout");
-  await serviceSheet.getByLabel("Duration (minutes)").fill("30");
-  await serviceSheet.getByLabel("Price (₱)").fill("400");
-  await serviceSheet.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Blowout", { exact: true })).toBeVisible();
-  await page.goto("/shop/setup/staff");
-  await page.getByRole("button", { name: "Add staff member" }).click();
-  const staffSheet = page.getByRole("dialog");
-  await staffSheet.getByLabel("Name shown to clients").fill("Ria Lopez");
-  await staffSheet.getByRole("checkbox", { name: "Blowout" }).check();
-  await staffSheet.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Ria Lopez", { exact: true })).toBeVisible();
+  await addServiceAndStaff(page, "Blowout", "Ria Lopez");
   await page.goto(`/shop/${branchId}/setup`);
   await page.getByRole("checkbox", { name: "Blowout" }).click();
   await expect(page.getByRole("checkbox", { name: "Blowout" })).toBeChecked();

@@ -20,15 +20,19 @@ import { Route as InviteCodeRouteImport } from './routes/invite.$code'
 import { Route as OOrgSlugRouteImport } from './routes/o.$orgSlug'
 import { Route as ShopIndexRouteImport } from './routes/shop/index'
 import { Route as ShopBranchIdRouteImport } from './routes/shop/$branchId'
+import { Route as ShopClientsRouteImport } from './routes/shop/clients'
 import { Route as ShopNotificationsRouteImport } from './routes/shop/notifications'
 import { Route as ShopRestrictedRouteImport } from './routes/shop/restricted'
 import { Route as ShopSetupRouteImport } from './routes/shop/setup'
 import { Route as ShopTeamRouteImport } from './routes/shop/team'
 import { Route as BBranchSlugIndexRouteImport } from './routes/b.$branchSlug.index'
 import { Route as BBranchSlugBookRouteImport } from './routes/b.$branchSlug.book'
+import { Route as ShopBranchIdCalendarRouteImport } from './routes/shop/$branchId/calendar'
 import { Route as ShopBranchIdDepositsRouteImport } from './routes/shop/$branchId/deposits'
 import { Route as ShopBranchIdFloorRouteImport } from './routes/shop/$branchId/floor'
 import { Route as ShopBranchIdSetupRouteImport } from './routes/shop/$branchId/setup'
+import { Route as ShopClientsIndexRouteImport } from './routes/shop/clients/index'
+import { Route as ShopClientsClientIdRouteImport } from './routes/shop/clients/$clientId'
 import { Route as ShopSetupIndexRouteImport } from './routes/shop/setup/index'
 import { Route as ShopSetupBranchesRouteImport } from './routes/shop/setup/branches'
 import { Route as ShopSetupOrganizationRouteImport } from './routes/shop/setup/organization'
@@ -91,6 +95,11 @@ const ShopBranchIdRoute = ShopBranchIdRouteImport.update({
   path: '/$branchId',
   getParentRoute: () => ShopRoute,
 } as any)
+const ShopClientsRoute = ShopClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => ShopRoute,
+} as any)
 const ShopNotificationsRoute = ShopNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -121,6 +130,11 @@ const BBranchSlugBookRoute = BBranchSlugBookRouteImport.update({
   path: '/book',
   getParentRoute: () => BBranchSlugRoute,
 } as any)
+const ShopBranchIdCalendarRoute = ShopBranchIdCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => ShopBranchIdRoute,
+} as any)
 const ShopBranchIdDepositsRoute = ShopBranchIdDepositsRouteImport.update({
   id: '/deposits',
   path: '/deposits',
@@ -135,6 +149,16 @@ const ShopBranchIdSetupRoute = ShopBranchIdSetupRouteImport.update({
   id: '/setup',
   path: '/setup',
   getParentRoute: () => ShopBranchIdRoute,
+} as any)
+const ShopClientsIndexRoute = ShopClientsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ShopClientsRoute,
+} as any)
+const ShopClientsClientIdRoute = ShopClientsClientIdRouteImport.update({
+  id: '/$clientId',
+  path: '/$clientId',
+  getParentRoute: () => ShopClientsRoute,
 } as any)
 const ShopSetupIndexRoute = ShopSetupIndexRouteImport.update({
   id: '/',
@@ -178,21 +202,25 @@ export interface FileRoutesByFullPath {
   '/invite/$code': typeof InviteCodeRoute
   '/o/$orgSlug': typeof OOrgSlugRoute
   '/shop/$branchId': typeof ShopBranchIdRouteWithChildren
+  '/shop/clients': typeof ShopClientsRouteWithChildren
   '/shop/notifications': typeof ShopNotificationsRoute
   '/shop/restricted': typeof ShopRestrictedRoute
   '/shop/setup': typeof ShopSetupRouteWithChildren
   '/shop/team': typeof ShopTeamRoute
   '/shop/': typeof ShopIndexRoute
   '/b/$branchSlug/book': typeof BBranchSlugBookRoute
+  '/shop/$branchId/calendar': typeof ShopBranchIdCalendarRoute
   '/shop/$branchId/deposits': typeof ShopBranchIdDepositsRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
+  '/shop/clients/$clientId': typeof ShopClientsClientIdRoute
   '/shop/setup/branches': typeof ShopSetupBranchesRoute
   '/shop/setup/organization': typeof ShopSetupOrganizationRoute
   '/shop/setup/policies': typeof ShopSetupPoliciesRoute
   '/shop/setup/services': typeof ShopSetupServicesRoute
   '/shop/setup/staff': typeof ShopSetupStaffRoute
   '/b/$branchSlug/': typeof BBranchSlugIndexRoute
+  '/shop/clients/': typeof ShopClientsIndexRoute
   '/shop/setup/': typeof ShopSetupIndexRoute
 }
 export interface FileRoutesByTo {
@@ -209,15 +237,18 @@ export interface FileRoutesByTo {
   '/shop/team': typeof ShopTeamRoute
   '/shop': typeof ShopIndexRoute
   '/b/$branchSlug/book': typeof BBranchSlugBookRoute
+  '/shop/$branchId/calendar': typeof ShopBranchIdCalendarRoute
   '/shop/$branchId/deposits': typeof ShopBranchIdDepositsRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
+  '/shop/clients/$clientId': typeof ShopClientsClientIdRoute
   '/shop/setup/branches': typeof ShopSetupBranchesRoute
   '/shop/setup/organization': typeof ShopSetupOrganizationRoute
   '/shop/setup/policies': typeof ShopSetupPoliciesRoute
   '/shop/setup/services': typeof ShopSetupServicesRoute
   '/shop/setup/staff': typeof ShopSetupStaffRoute
   '/b/$branchSlug': typeof BBranchSlugIndexRoute
+  '/shop/clients': typeof ShopClientsIndexRoute
   '/shop/setup': typeof ShopSetupIndexRoute
 }
 export interface FileRoutesById {
@@ -232,21 +263,25 @@ export interface FileRoutesById {
   '/invite/$code': typeof InviteCodeRoute
   '/o/$orgSlug': typeof OOrgSlugRoute
   '/shop/$branchId': typeof ShopBranchIdRouteWithChildren
+  '/shop/clients': typeof ShopClientsRouteWithChildren
   '/shop/notifications': typeof ShopNotificationsRoute
   '/shop/restricted': typeof ShopRestrictedRoute
   '/shop/setup': typeof ShopSetupRouteWithChildren
   '/shop/team': typeof ShopTeamRoute
   '/shop/': typeof ShopIndexRoute
   '/b/$branchSlug/book': typeof BBranchSlugBookRoute
+  '/shop/$branchId/calendar': typeof ShopBranchIdCalendarRoute
   '/shop/$branchId/deposits': typeof ShopBranchIdDepositsRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
+  '/shop/clients/$clientId': typeof ShopClientsClientIdRoute
   '/shop/setup/branches': typeof ShopSetupBranchesRoute
   '/shop/setup/organization': typeof ShopSetupOrganizationRoute
   '/shop/setup/policies': typeof ShopSetupPoliciesRoute
   '/shop/setup/services': typeof ShopSetupServicesRoute
   '/shop/setup/staff': typeof ShopSetupStaffRoute
   '/b/$branchSlug/': typeof BBranchSlugIndexRoute
+  '/shop/clients/': typeof ShopClientsIndexRoute
   '/shop/setup/': typeof ShopSetupIndexRoute
 }
 export interface FileRouteTypes {
@@ -262,21 +297,25 @@ export interface FileRouteTypes {
     | '/invite/$code'
     | '/o/$orgSlug'
     | '/shop/$branchId'
+    | '/shop/clients'
     | '/shop/notifications'
     | '/shop/restricted'
     | '/shop/setup'
     | '/shop/team'
     | '/shop/'
     | '/b/$branchSlug/book'
+    | '/shop/$branchId/calendar'
     | '/shop/$branchId/deposits'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
+    | '/shop/clients/$clientId'
     | '/shop/setup/branches'
     | '/shop/setup/organization'
     | '/shop/setup/policies'
     | '/shop/setup/services'
     | '/shop/setup/staff'
     | '/b/$branchSlug/'
+    | '/shop/clients/'
     | '/shop/setup/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -293,15 +332,18 @@ export interface FileRouteTypes {
     | '/shop/team'
     | '/shop'
     | '/b/$branchSlug/book'
+    | '/shop/$branchId/calendar'
     | '/shop/$branchId/deposits'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
+    | '/shop/clients/$clientId'
     | '/shop/setup/branches'
     | '/shop/setup/organization'
     | '/shop/setup/policies'
     | '/shop/setup/services'
     | '/shop/setup/staff'
     | '/b/$branchSlug'
+    | '/shop/clients'
     | '/shop/setup'
   id:
     | '__root__'
@@ -315,21 +357,25 @@ export interface FileRouteTypes {
     | '/invite/$code'
     | '/o/$orgSlug'
     | '/shop/$branchId'
+    | '/shop/clients'
     | '/shop/notifications'
     | '/shop/restricted'
     | '/shop/setup'
     | '/shop/team'
     | '/shop/'
     | '/b/$branchSlug/book'
+    | '/shop/$branchId/calendar'
     | '/shop/$branchId/deposits'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
+    | '/shop/clients/$clientId'
     | '/shop/setup/branches'
     | '/shop/setup/organization'
     | '/shop/setup/policies'
     | '/shop/setup/services'
     | '/shop/setup/staff'
     | '/b/$branchSlug/'
+    | '/shop/clients/'
     | '/shop/setup/'
   fileRoutesById: FileRoutesById
 }
@@ -424,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopBranchIdRouteImport
       parentRoute: typeof ShopRoute
     }
+    '/shop/clients': {
+      id: '/shop/clients'
+      path: '/clients'
+      fullPath: '/shop/clients'
+      preLoaderRoute: typeof ShopClientsRouteImport
+      parentRoute: typeof ShopRoute
+    }
     '/shop/notifications': {
       id: '/shop/notifications'
       path: '/notifications'
@@ -466,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BBranchSlugBookRouteImport
       parentRoute: typeof BBranchSlugRoute
     }
+    '/shop/$branchId/calendar': {
+      id: '/shop/$branchId/calendar'
+      path: '/calendar'
+      fullPath: '/shop/$branchId/calendar'
+      preLoaderRoute: typeof ShopBranchIdCalendarRouteImport
+      parentRoute: typeof ShopBranchIdRoute
+    }
     '/shop/$branchId/deposits': {
       id: '/shop/$branchId/deposits'
       path: '/deposits'
@@ -486,6 +546,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/shop/$branchId/setup'
       preLoaderRoute: typeof ShopBranchIdSetupRouteImport
       parentRoute: typeof ShopBranchIdRoute
+    }
+    '/shop/clients/': {
+      id: '/shop/clients/'
+      path: '/'
+      fullPath: '/shop/clients/'
+      preLoaderRoute: typeof ShopClientsIndexRouteImport
+      parentRoute: typeof ShopClientsRoute
+    }
+    '/shop/clients/$clientId': {
+      id: '/shop/clients/$clientId'
+      path: '/$clientId'
+      fullPath: '/shop/clients/$clientId'
+      preLoaderRoute: typeof ShopClientsClientIdRouteImport
+      parentRoute: typeof ShopClientsRoute
     }
     '/shop/setup/': {
       id: '/shop/setup/'
@@ -533,12 +607,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface ShopBranchIdRouteChildren {
+  ShopBranchIdCalendarRoute: typeof ShopBranchIdCalendarRoute
   ShopBranchIdDepositsRoute: typeof ShopBranchIdDepositsRoute
   ShopBranchIdFloorRoute: typeof ShopBranchIdFloorRoute
   ShopBranchIdSetupRoute: typeof ShopBranchIdSetupRoute
 }
 
 const ShopBranchIdRouteChildren: ShopBranchIdRouteChildren = {
+  ShopBranchIdCalendarRoute: ShopBranchIdCalendarRoute,
   ShopBranchIdDepositsRoute: ShopBranchIdDepositsRoute,
   ShopBranchIdFloorRoute: ShopBranchIdFloorRoute,
   ShopBranchIdSetupRoute: ShopBranchIdSetupRoute,
@@ -546,6 +622,20 @@ const ShopBranchIdRouteChildren: ShopBranchIdRouteChildren = {
 
 const ShopBranchIdRouteWithChildren = ShopBranchIdRoute._addFileChildren(
   ShopBranchIdRouteChildren,
+)
+
+interface ShopClientsRouteChildren {
+  ShopClientsClientIdRoute: typeof ShopClientsClientIdRoute
+  ShopClientsIndexRoute: typeof ShopClientsIndexRoute
+}
+
+const ShopClientsRouteChildren: ShopClientsRouteChildren = {
+  ShopClientsClientIdRoute: ShopClientsClientIdRoute,
+  ShopClientsIndexRoute: ShopClientsIndexRoute,
+}
+
+const ShopClientsRouteWithChildren = ShopClientsRoute._addFileChildren(
+  ShopClientsRouteChildren,
 )
 
 interface ShopSetupRouteChildren {
@@ -572,6 +662,7 @@ const ShopSetupRouteWithChildren = ShopSetupRoute._addFileChildren(
 
 interface ShopRouteChildren {
   ShopBranchIdRoute: typeof ShopBranchIdRouteWithChildren
+  ShopClientsRoute: typeof ShopClientsRouteWithChildren
   ShopNotificationsRoute: typeof ShopNotificationsRoute
   ShopRestrictedRoute: typeof ShopRestrictedRoute
   ShopSetupRoute: typeof ShopSetupRouteWithChildren
@@ -581,6 +672,7 @@ interface ShopRouteChildren {
 
 const ShopRouteChildren: ShopRouteChildren = {
   ShopBranchIdRoute: ShopBranchIdRouteWithChildren,
+  ShopClientsRoute: ShopClientsRouteWithChildren,
   ShopNotificationsRoute: ShopNotificationsRoute,
   ShopRestrictedRoute: ShopRestrictedRoute,
   ShopSetupRoute: ShopSetupRouteWithChildren,
