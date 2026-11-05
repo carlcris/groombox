@@ -6,7 +6,7 @@ import { fillTemplate, messages } from "@/lib/messages";
 import { formatPeso } from "@/lib/money-formatting";
 import { publicImageUrl } from "@/lib/stored-images";
 
-const methodLabels: Record<string, string> = messages.branches.methods;
+const methodLabels: Record<string, string> = messages.paymentMethods;
 
 function CopyRow({ label, value, display }: { label: string; value: string; display?: string }) {
   return (

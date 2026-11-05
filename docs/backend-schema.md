@@ -21,7 +21,7 @@ This is the design the first migrations are written from. Exact SQL lives in `su
   - `statement_code` is short and readable, because only the owner and platform admins see it.
 - Snapshots and loosely structured metadata are `jsonb`.
 - Internal helpers (row-level security lookups, logging, code and slug generators) live in schema `private`, which PostgREST does not expose.
-- Functions raise coded errors with SQLSTATE class `GB`, and the app maps each code to a safe message: `GBA01` sign-in required, `GBA02` not permitted, `GBI01` invite unavailable, `GBI02` already a member, `GBM01` owner membership locked, `GBB01` hold limit reached (two unexpired holds), `GBB02` branch not taking bookings, `GBB03` slot unavailable (taken, off the slot grid, or no longer offered), `GBB04` booking not cancellable now, `GBB05` booking not claimable (made by an account). Later phases add their codes here.
+- Functions raise coded errors with SQLSTATE class `GB`, and the app maps each code to a safe message: `GBA01` sign-in required, `GBA02` not permitted, `GBI01` invite unavailable, `GBI02` already a member, `GBM01` owner membership locked, `GBB01` hold limit reached (two unexpired holds), `GBB02` branch not taking bookings, `GBB03` slot unavailable (taken, off the slot grid, or no longer offered), `GBB04` booking not cancellable now, `GBB05` booking not claimable (made by an account), `GBP01` hold ran out (a payment report after the hold), `GBP02` payment not expected (the booking is not waiting for a report), `GBP03` proof not reviewable (already decided, not the latest, or a resubmission asked of a flagged booking), `GBP04` refund not applicable. Later phases add their codes here.
 - Row-level security is enabled on every table. No table is readable or writable without a policy.
 - Tables that accept direct single-row writes under row-level security have an `AFTER` trigger that writes the `activity_logs` row: `profiles`, `organizations`, `branches`, `branch_hours`, `branch_closures`, `branch_media`, `branch_services`, `service_categories`, `services`, `staff`, `staff_branches`, `staff_services`, `staff_shifts`, `staff_time_off`, `clients`, and `platform_settings`. The shared trigger function runs with the caller's rights and logs only writes made directly by an app role (`authenticated` or `anon`); it writes through `private.log_activity`, which is `SECURITY DEFINER` because callers cannot insert into `activity_logs` themselves. It records only the actor, table, row id, action, and allow-listed changed column names. Database functions run as `SECURITY DEFINER` and write their own activity row, so the trigger skips their writes and nothing is logged twice. `notifications.read_at` updates are not logged. A new directly writable table gets the trigger in the same migration.
 
@@ -333,18 +333,19 @@ Constraints and indexes:
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | |
-| `booking_id`, `organization_id`, `branch_id` | `uuid` | |
-| `submitted_by` | `uuid` | |
+| `booking_id`, `organization_id`, `branch_id` | `uuid` | `(booking_id, organization_id)` references `bookings`; `(branch_id, organization_id)` references `branches` |
+| `submitted_by` | `uuid` | References `profiles` |
 | `reference_number` | `text` | |
 | `amount_paid` | `numeric(20,2)` | |
 | `method` | `payment_method` | |
-| `proof_path` | `text` | Optional, in the private bucket |
-| `note` | `text` | |
-| `status` | `proof_status` | |
-| `reviewed_by`, `reviewed_at`, `review_note` | | |
-| `created_at` | `timestamptz` | |
+| `proof_path` | `text` | Optional, in the private bucket under the booking's folder |
+| `note` | `text` | The client's note |
+| `status` | `proof_status` | Default `submitted` |
+| `reviewed_by`, `reviewed_at`, `review_note` | | `review_note` is the shop's note to the client, shown on the booking page |
+| `created_at` | `timestamptz` | `clock_timestamp()`, so proofs keep their order even within one transaction |
+| `updated_at` | `timestamptz` | |
 
-A booking can have several proofs over time; at most one is `submitted` at once (partial unique index). Partial index on `(branch_id)` where `status = 'submitted'` for the review list. Cancelling a booking moves its `submitted` proof to `withdrawn`.
+A booking can have several proofs over time; at most one is `submitted` at once (partial unique index). The latest proof (by `created_at`) is the one a review decides. Indexes: `(booking_id, created_at desc)`, `(submitted_by)`, and a partial index on `(branch_id)` where `status = 'submitted'` for the review list. Cancelling a booking moves its `submitted` proof to `withdrawn`.
 
 Accepting a proof means the shop received the full amount due; there is no partial acceptance. When the reported amount differs from `amount_due`, the review sheet shows the difference, and the reviewer asks the client to resubmit or rejects.
 
@@ -411,16 +412,17 @@ Sales on a closed date cannot be created or changed until the day is reopened; t
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | |
-| `organization_id`, `branch_id` | `uuid` | |
+| `organization_id`, `branch_id` | `uuid` | `branch_id` is required for `booking_fee` and optional for adjustments |
 | `kind` | `fee_entry_kind` | |
-| `booking_id` | `uuid` | Unique when `kind = 'booking_fee'` |
+| `booking_id` | `uuid` | Unique when `kind = 'booking_fee'` (the booking's `convenience_fee`, written by `review_payment_proof` on acceptance) |
 | `amount` | `numeric(20,2)` | Negative allowed for adjustments |
 | `description` | `text` | For adjustments |
 | `accrued_at` | `timestamptz` | When the deposit was accepted, or the adjustment added |
-| `statement_id` | `uuid` | Null until billed |
+| `statement_id` | `uuid` | Null until billed. Added in phase 8 with `fee_statements` |
 | `created_by` | `uuid` | |
+| `created_at` | `timestamptz` | |
 
-Partial index on `(organization_id)` where `statement_id is null`. Entries are never deleted and their amounts never change. Only `statement_id` changes: it is set when a statement includes the entry, and cleared when that statement is voided.
+Check: a `booking_fee` has a booking, a branch, and an amount above zero. Index on `(organization_id, accrued_at)`; phase 8 adds the partial index on `(organization_id)` where `statement_id is null`. Entries are never deleted and their amounts never change. Only `statement_id` changes: it is set when a statement includes the entry, and cleared when that statement is voided.
 
 ### `fee_statements`
 
@@ -495,13 +497,13 @@ Views run with the caller's rights (`security_invoker`) unless they must expose 
 | `get_available_slots` | Anyone | Open start times for a branch, business date, services, and optional staff member (see below) |
 | `get_next_available_date` | Anyone | The first business date after a given one, within the booking window, with an open start time, or null. Backs "No times left on this day" |
 | `get_booking_quote` | Anyone | Service total, deposit, convenience fee, and amount due for a branch and services, calculated as `create_online_booking` does; no row when the branch is not taking bookings or a service is not offered |
-| `get_booking_by_code` | Anyone holding the code, with or without a session | The client-facing view of one booking: id, code, status (a hold past `hold_expires_at` reads as `hold_expired` before the job runs), branch name, slug, address, contact number, and time zone, organization name, staff display name, start time and when the last service ends (no buffer), services, amounts, payment details snapshot, booking time, hold and review deadlines, the accepted policy, and who cancelled. The client's name and note only to the creator and the branch's members, and flags for whether the caller is the creator or a member and whether a guest made it. Never the client's mobile number or the shop's notes. Phase 4 adds the latest proof's status and review note |
+| `get_booking_by_code` | Anyone holding the code, with or without a session | The client-facing view of one booking: id, code, status (a hold past `hold_expires_at` reads as `hold_expired` before the job runs), branch name, slug, address, contact number, and time zone, organization name, staff display name, start time and when the last service ends (no buffer), services, amounts, payment details snapshot, booking time, hold and review deadlines, the accepted policy, and who cancelled, the organization id, and the latest proof's status and review note. The client's name and note, and the latest proof's reference number, amount, and method, only to the creator and the branch's members, and flags for whether the caller is the creator or a member and whether a guest made it. Never the client's mobile number or the shop's notes |
 | `claim_guest_booking` | Signed-in client or guest holding the code | Makes the caller the booking's creator when the current creator is a guest profile, so the booking can be paid, cancelled, or carried into an account from this device. Refused when the creator is a non-guest account, who signs in instead |
 | `create_online_booking` | Client or guest | Locks the caller's profile and refuses when the caller already has two unexpired holds. Checks the start time against the same rules as `get_available_slots`, resolves "any available" (the qualifying staff member with the fewest booked minutes that business date, then by name), expires that staff member's stale holds, calculates totals, deposit, and fee, sets `end_at` with the buffer and the business date, snapshots payment details, the cancellation policy, and the accepted privacy notice version, upserts the client record, inserts as `held`, fills the caller's profile name and mobile number when empty, and notifies the branch's deposit reviewers and the booked staff member. When the overlap guard trips on a booking committed meanwhile, "any available" looks again, up to three times |
-| `submit_payment_proof` | Booking's creator | Refused once the hold has run out (`hold_expired`, or `held` past `hold_expires_at`), because the slot may already be someone else's. Adds a proof, moves to `payment_submitted`, sets `review_expires_at`, notifies reviewers |
-| `review_payment_proof` | Permitted member | Accept, reject, or request resubmission. Accepting confirms the booking and inserts the fee entry. Requesting resubmission resets `review_expires_at`, giving the client a full review time to send a new proof |
-| `cancel_booking` | Booking's creator or a member of the branch | The client cancels before the start time from `held` (while the hold lasts), `payment_submitted`, `needs_resubmission`, `review_expired_pending_resolution`, or `confirmed`; the shop from those and `waiting` or `checked_in`. Records who, as which side, when, and why in `cancellation_metadata`. Built in phase 3; phase 4 adds withdrawing a submitted proof |
-| `record_refund_outcome` | Deposit reviewers of the branch | Records a refund settled outside GroomBox: on a cancelled, rejected, or no-show booking, or for a deposit larger than the final bill |
+| `submit_payment_proof` | Booking's creator | Takes the reference number, amount, method, and optional screenshot path (inside the booking's `{organization_id}/{booking_id}/` folder) and note. Accepted from `held` while the hold lasts, or from `needs_resubmission`. Refused once the hold has run out (`hold_expired`, or `held` past `hold_expires_at`), because the slot may already be someone else's. Adds a proof, moves to `payment_submitted`, sets `review_expires_at` to now plus the review time, clears `review_reminder_sent_at`, notifies reviewers |
+| `review_payment_proof` | Deposit reviewers of the branch | Decides the booking's latest proof: `accepted`, `rejected`, or `resubmission_requested`, with an optional note to the client. Accepting confirms the booking and inserts the fee entry; rejecting moves it to `payment_rejected`, releasing the slot. Requesting resubmission moves it to `needs_resubmission` and resets `review_expires_at`, giving the client a full review time to send a new proof. A booking flagged for resolution can only be accepted or rejected. Notifies the booking's creator |
+| `cancel_booking` | Booking's creator or a member of the branch | The client cancels before the start time from `held` (while the hold lasts), `payment_submitted`, `needs_resubmission`, `review_expired_pending_resolution`, or `confirmed`; the shop from those and `waiting` or `checked_in`. Withdraws a submitted proof; records who, as which side, when, and why in `cancellation_metadata` |
+| `record_refund_outcome` | Deposit reviewers of the branch | Records a refund settled outside GroomBox in `refund_metadata` (refunded or not, amount, note, who, when): on a cancelled, rejected, or no-show booking with a deposit, or a completed one whose deposit was larger than the final bill. Recording again replaces the earlier outcome |
 | `create_staff_booking` | Member of the branch (any role) | Inserts as `confirmed` with no deposit or fee |
 | `reschedule_booking` | Member of the branch (any role) | Moves to a new time or staff member, subject to the overlap constraint |
 | `add_walk_in` | Member of the branch (any role) | Inserts as `waiting` with the next queue number |
@@ -525,7 +527,9 @@ Views run with the caller's rights (`security_invoker`) unless they must expose 
 Functions run by `pg_cron`, not exposed through PostgREST:
 
 - `expire_holds` and `expire_reviews`, every 5 minutes. `private.expire_holds(staff_id)` also runs inside `create_online_booking` for one staff member; each expiry writes an activity row, with no actor from the job.
+- `expire_reviews` moves `payment_submitted` and `needs_resubmission` bookings past `review_expires_at` to `review_expired_pending_resolution`, keeping the slot, and notifies the client and the deposit reviewers.
 - `remind_pending_reviews`, every 5 minutes: notifies deposit reviewers for `payment_submitted` bookings with an hour or less left on `review_expires_at` and no `review_reminder_sent_at`, then sets it.
+- Each job logs one activity row per booking it changes, with no actor.
 - `issue_fee_statements`, daily just after midnight in `Asia/Manila`: issues statements for a cut-off date that has just ended.
 - `restrict_overdue_organizations`, daily: moves `issued` statements past `due_at` to `overdue` and restricts their organizations with reason `overdue_statement`. An organization that is already restricted keeps its reason. A manual restore therefore holds until another statement goes overdue.
 
@@ -567,6 +571,8 @@ Column grants on the owner's direct updates:
 | `accessible_organization_ids()` | Organizations where the caller is an active member and access is active |
 | `owned_organization_ids()` | The same, limited to the owner role |
 | `managed_organization_ids()` | The same, limited to the owner and manager roles |
+| `deposit_review_branch_ids()` | Branches where the caller reviews deposits: every branch for an owner, the assigned ones for a manager, and the assigned ones for staff with `can_review_deposits` |
+| `billing_organization_ids()` | Organizations the caller owns, whatever their access status; used by the fee and statement policies |
 | `branch_ids_with_role(roles)` | Branches of accessible organizations where the caller holds one of the roles: every branch for an owner, the assigned ones for a manager or staff member |
 | `colleague_user_ids()` | Users who are active members of the caller's accessible organizations |
 | `is_platform_admin()` | Whether the caller has a `platform_admins` row; used as a scalar subquery |
@@ -579,7 +585,7 @@ They are `SECURITY DEFINER` because the membership tables' own policies use them
 |---|---|---|---|
 | `shop-media` | Yes | `{organization_id}/logo/{file}`, `{organization_id}/branches/{branch_id}/{file}`, `{organization_id}/staff/{staff_id}/{file}` | Owner for all three; managers for the photos of their branches |
 | `payment-qr` | Yes | `{organization_id}/{branch_id}/{file}` | Owner |
-| `payment-proofs` | No | `{organization_id}/{booking_id}/{file}` | The booking's creator |
+| `payment-proofs` | No | `{organization_id}/{booking_id}/{file}` | The booking's creator. Read through 60-second signed URLs by the uploader and the branch's deposit reviewers |
 | `avatars` | Yes | `{user_id}/{file}` | The user |
 
 All buckets: 5 MB limit, image types only.
@@ -595,6 +601,6 @@ All buckets: 5 MB limit, image types only.
 - Bookings in every status, proofs in every status, completed sales, one closed day.
 - Fee entries, one paid statement, one issued, one overdue.
 
-Phase 3 seeds bookings relative to the seed time: a confirmed booking at the late-night spa that crosses midnight, a guest's held and expired holds and a client's cancelled booking at Makati, and a confirmed booking at the restricted organization. Later phases add the remaining statuses with their proofs and sales.
+Bookings are seeded relative to the seed time: a confirmed booking at the late-night spa that crosses midnight; at Makati a guest's held and expired holds, a cancelled booking with a withdrawn proof, and bookings in `payment_submitted`, `needs_resubmission`, `review_expired_pending_resolution`, and `payment_rejected`; and a confirmed booking at the restricted organization. Proofs cover every status, and both confirmed bookings have their fee entry. Later phases add walk-ins, visits in progress, sales, and statements.
 
 Seed data never goes in migrations.

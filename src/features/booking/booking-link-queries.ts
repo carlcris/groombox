@@ -3,6 +3,18 @@ import { supabase } from "@/lib/supabase-client";
 import type { Database, Json } from "@/types/database.types";
 
 export type BookingStatus = Database["public"]["Enums"]["booking_status"];
+export type ProofStatus = Database["public"]["Enums"]["proof_status"];
+export type PaymentMethod = Database["public"]["Enums"]["payment_method"];
+
+// The latest payment report: its status and the shop's note for anyone holding the code; what was
+// reported only for the creator and the branch's members.
+export type LatestProof = {
+  status: ProofStatus;
+  reviewNote: string | null;
+  referenceNumber: string | null;
+  amountPaid: number | null;
+  method: PaymentMethod | null;
+};
 
 export type BookedService = { name: string; durationMinutes: number; price: number };
 
@@ -19,6 +31,7 @@ export type BookingPaymentDetails = {
 export type BookingView = {
   bookingId: string;
   bookingCode: string;
+  organizationId: string;
   status: BookingStatus;
   branchName: string;
   branchSlug: string;
@@ -37,6 +50,8 @@ export type BookingView = {
   paymentDetails: BookingPaymentDetails | null;
   bookedAt: string;
   holdExpiresAt: string | null;
+  reviewExpiresAt: string | null;
+  latestProof: LatestProof | null;
   cancellationPolicy: string;
   cancelledBy: "client" | "shop" | null;
   clientName: string | null;
@@ -90,6 +105,7 @@ export function bookingByCodeQueryOptions(bookingCode: string) {
       return {
         bookingId: row.booking_id,
         bookingCode: row.booking_code,
+        organizationId: row.organization_id,
         status: row.status,
         branchName: row.branch_name,
         branchSlug: row.branch_slug,
@@ -108,6 +124,16 @@ export function bookingByCodeQueryOptions(bookingCode: string) {
         paymentDetails: readPaymentDetails(row.payment_instructions),
         bookedAt: row.booked_at,
         holdExpiresAt: row.hold_expires_at,
+        reviewExpiresAt: row.review_expires_at,
+        latestProof: row.latest_proof_status
+          ? {
+              status: row.latest_proof_status,
+              reviewNote: row.latest_proof_review_note,
+              referenceNumber: row.latest_proof_reference_number,
+              amountPaid: row.latest_proof_amount_paid,
+              method: row.latest_proof_method,
+            }
+          : null,
         cancellationPolicy: typeof policy?.cancellation_policy === "string" ? policy.cancellation_policy : "",
         cancelledBy,
         clientName: row.client_name,

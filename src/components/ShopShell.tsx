@@ -1,11 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { Bell, LayoutList, LogOut, Menu, Settings, SlidersHorizontal, Users, type LucideIcon } from "lucide-react";
+import { Bell, LayoutList, LogOut, Menu, Settings, SlidersHorizontal, Users, Wallet, type LucideIcon } from "lucide-react";
 import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { GroomBoxLogo } from "@/components/GroomBoxLogo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { canReviewDeposits } from "@/features/deposits/deposit-access";
+import { pendingDepositCountQueryOptions } from "@/features/deposits/deposit-queries";
+import { useDepositUpdates } from "@/features/deposits/useDepositUpdates";
 import { unreadNotificationCountQueryOptions } from "@/features/notifications/notification-queries";
 import { useNotificationUpdates } from "@/features/notifications/useNotificationUpdates";
 import { pickCurrentBranch } from "@/features/organization/current-workplace";
@@ -19,9 +22,9 @@ type NavigationItem = {
   label: string;
   icon: LucideIcon;
   link:
-    | { to: "/shop/$branchId/floor" | "/shop/$branchId/setup"; params: { branchId: string } }
+    | { to: "/shop/$branchId/floor" | "/shop/$branchId/setup" | "/shop/$branchId/deposits"; params: { branchId: string } }
     | { to: "/shop/team" | "/shop/notifications" | "/shop/setup" };
-  badge?: number;
+  badge?: { count: number; label: string };
   // Phones show the main items in the bottom bar and the rest under More.
   inBottomBar: boolean;
 };
@@ -54,6 +57,10 @@ export function ShopShell({
 
   useNotificationUpdates(userId);
   const unreadCount = useQuery(unreadNotificationCountQueryOptions(userId)).data ?? 0;
+  const reviewsDeposits = isActive && activeBranchId !== undefined && canReviewDeposits(currentMembership);
+  useDepositUpdates(reviewsDeposits ? activeBranchId : undefined);
+  const pendingDeposits =
+    useQuery({ ...pendingDepositCountQueryOptions(activeBranchId ?? ""), enabled: reviewsDeposits }).data ?? 0;
 
   const items: NavigationItem[] = [];
   if (isActive && activeBranchId) {
@@ -62,6 +69,16 @@ export function ShopShell({
       label: messages.shop.floor,
       icon: LayoutList,
       link: { to: "/shop/$branchId/floor", params: { branchId: activeBranchId } },
+      inBottomBar: true,
+    });
+  }
+  if (reviewsDeposits && activeBranchId) {
+    items.push({
+      key: "deposits",
+      label: messages.shop.deposits,
+      icon: Wallet,
+      link: { to: "/shop/$branchId/deposits", params: { branchId: activeBranchId } },
+      badge: { count: pendingDeposits, label: messages.deposits.toReview },
       inBottomBar: true,
     });
   }
@@ -83,7 +100,7 @@ export function ShopShell({
     label: messages.shop.notifications,
     icon: Bell,
     link: { to: "/shop/notifications" },
-    badge: unreadCount,
+    badge: { count: unreadCount, label: messages.notifications.unread },
     inBottomBar: true,
   });
 
@@ -111,7 +128,7 @@ export function ShopShell({
             <Link key={item.key} {...item.link} className={linkClassName}>
               <item.icon className="size-6" aria-hidden />
               <span className="flex-1">{item.label}</span>
-              <NavigationBadge count={item.badge} />
+              <NavigationBadge badge={item.badge} />
             </Link>
           ))}
         </nav>
@@ -139,7 +156,7 @@ export function ShopShell({
             >
               <item.icon className="size-6" aria-hidden />
               {item.label}
-              <NavigationBadge count={item.badge} className="absolute top-1 right-1/4" />
+              <NavigationBadge badge={item.badge} className="absolute top-1 right-1/4" />
             </Link>
           ))}
         <button
@@ -178,8 +195,8 @@ export function ShopShell({
   );
 }
 
-function NavigationBadge({ count, className }: { count: number | undefined; className?: string }) {
-  if (!count) return null;
+function NavigationBadge({ badge, className }: { badge: NavigationItem["badge"]; className?: string }) {
+  if (!badge?.count) return null;
   return (
     <span
       className={cn(
@@ -187,8 +204,8 @@ function NavigationBadge({ count, className }: { count: number | undefined; clas
         className,
       )}
     >
-      {count > 99 ? "99+" : count}
-      <span className="sr-only"> {messages.notifications.unread}</span>
+      {badge.count > 99 ? "99+" : badge.count}
+      <span className="sr-only"> {badge.label}</span>
     </span>
   );
 }

@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase-client";
 
 // Uploads are images only, 5 MB at most (AGENTS.md, File Storage). The buckets enforce the same
 // limits; checking here gives the person a clear message before the upload starts.
-export type ImageBucket = "shop-media" | "payment-qr";
+export type ImageBucket = "shop-media" | "payment-qr" | "payment-proofs";
 
 export const maxImageBytes = 5 * 1024 * 1024;
 export const acceptedImageTypes = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -36,6 +36,16 @@ export async function removeStoredImage(bucket: ImageBucket, path: string): Prom
   await supabase.storage.from(bucket).remove([path]);
 }
 
-export function publicImageUrl(bucket: ImageBucket, path: string): string {
+// The payment-proofs bucket is private: screenshots are read through short-lived signed URLs, by the
+// uploader and the branch's deposit reviewers.
+const signedUrlSeconds = 60;
+
+export async function privateImageUrl(bucket: "payment-proofs", path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, signedUrlSeconds);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export function publicImageUrl(bucket: Exclude<ImageBucket, "payment-proofs">, path: string): string {
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }

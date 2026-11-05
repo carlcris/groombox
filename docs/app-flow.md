@@ -167,6 +167,8 @@ Clients cancel before the start time. Cancelling a booking with a reported payme
 4. They choose **Accept**, **Ask to resubmit** (with a note), or **Reject** (with a reason). Accept means the full amount due arrived; a short payment is sent back for resubmission or rejected. Asking to resubmit gives the client a fresh review time. A booking flagged for resolution offers only **Accept** or **Reject**, following the state diagram.
 5. The client's booking page updates live and a notification is created.
 
+Below the list, "Waiting for the client" shows bookings sent back for resubmission, and "Refunds to record" shows cancelled, rejected, and no-show bookings with a reported payment, where a reviewer records whether the deposit was refunded.
+
 ## 7. Flow: walk-in
 
 1. On the floor view, tap "Add walk-in".

@@ -105,7 +105,7 @@ export function PaymentDetailsSheet({
                 <SelectContent>
                   {branchPaymentMethods.map((method) => (
                     <SelectItem key={method} value={method} className="min-h-11 text-base">
-                      {messages.branches.methods[method]}
+                      {messages.paymentMethods[method]}
                     </SelectItem>
                   ))}
                 </SelectContent>

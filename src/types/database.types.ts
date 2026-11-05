@@ -660,6 +660,96 @@ export type Database = {
           },
         ];
       };
+      fee_entries: {
+        Row: {
+          accrued_at: string;
+          amount: number;
+          booking_id: string | null;
+          branch_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          id: string;
+          kind: Database["public"]["Enums"]["fee_entry_kind"];
+          organization_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          accrued_at: string;
+          amount: number;
+          booking_id?: string | null;
+          branch_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          kind: Database["public"]["Enums"]["fee_entry_kind"];
+          organization_id: string;
+        };
+        Update: {
+          accrued_at?: string;
+          amount?: number;
+          booking_id?: string | null;
+          branch_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["fee_entry_kind"];
+          organization_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fee_entries_booking_id_organization_id_fkey";
+            columns: ["booking_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "bookings";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "fee_entries_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "branch_setup_status";
+            referencedColumns: ["branch_id", "organization_id"];
+          },
+          {
+            foreignKeyName: "fee_entries_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "fee_entries_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "my_branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "fee_entries_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "public_branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "fee_entries_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fee_entries_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       member_branches: {
         Row: {
           branch_id: string;
@@ -986,6 +1076,121 @@ export type Database = {
           {
             foreignKeyName: "organizations_terms_accepted_by_fkey";
             columns: ["terms_accepted_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payment_proofs: {
+        Row: {
+          amount_paid: number;
+          booking_id: string;
+          branch_id: string;
+          created_at: string;
+          id: string;
+          method: Database["public"]["Enums"]["payment_method"];
+          note: string | null;
+          organization_id: string;
+          proof_path: string | null;
+          reference_number: string;
+          review_note: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          status: Database["public"]["Enums"]["proof_status"];
+          submitted_by: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_paid: number;
+          booking_id: string;
+          branch_id: string;
+          created_at?: string;
+          id?: string;
+          method: Database["public"]["Enums"]["payment_method"];
+          note?: string | null;
+          organization_id: string;
+          proof_path?: string | null;
+          reference_number: string;
+          review_note?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          status?: Database["public"]["Enums"]["proof_status"];
+          submitted_by: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_paid?: number;
+          booking_id?: string;
+          branch_id?: string;
+          created_at?: string;
+          id?: string;
+          method?: Database["public"]["Enums"]["payment_method"];
+          note?: string | null;
+          organization_id?: string;
+          proof_path?: string | null;
+          reference_number?: string;
+          review_note?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          status?: Database["public"]["Enums"]["proof_status"];
+          submitted_by?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payment_proofs_booking_id_organization_id_fkey";
+            columns: ["booking_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "bookings";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "payment_proofs_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "branch_setup_status";
+            referencedColumns: ["branch_id", "organization_id"];
+          },
+          {
+            foreignKeyName: "payment_proofs_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "payment_proofs_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "my_branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "payment_proofs_branch_id_organization_id_fkey";
+            columns: ["branch_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "public_branches";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "payment_proofs_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payment_proofs_reviewed_by_fkey";
+            columns: ["reviewed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payment_proofs_submitted_by_fkey";
+            columns: ["submitted_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
@@ -1722,6 +1927,12 @@ export type Database = {
           convenience_fee: number;
           deposit_amount: number;
           hold_expires_at: string;
+          latest_proof_amount_paid: number;
+          latest_proof_method: Database["public"]["Enums"]["payment_method"];
+          latest_proof_reference_number: string;
+          latest_proof_review_note: string;
+          latest_proof_status: Database["public"]["Enums"]["proof_status"];
+          organization_id: string;
           organization_name: string;
           payment_instructions: Json;
           policy_acceptance: Json;
@@ -1763,7 +1974,19 @@ export type Database = {
         };
         Returns: string;
       };
+      record_refund_outcome: {
+        Args: { p_amount: number; p_booking_id: string; p_note?: string; p_refunded: boolean };
+        Returns: undefined;
+      };
       remove_member: { Args: { p_member_id: string }; Returns: undefined };
+      review_payment_proof: {
+        Args: {
+          p_outcome: Database["public"]["Enums"]["proof_status"];
+          p_proof_id: string;
+          p_review_note?: string;
+        };
+        Returns: undefined;
+      };
       save_staff_profile: {
         Args: {
           p_branch_ids: string[];
@@ -1781,6 +2004,17 @@ export type Database = {
         Returns: string;
       };
       set_branch_hours: { Args: { p_branch_id: string; p_hours: Json }; Returns: undefined };
+      submit_payment_proof: {
+        Args: {
+          p_amount_paid: number;
+          p_booking_id: string;
+          p_method: Database["public"]["Enums"]["payment_method"];
+          p_note?: string;
+          p_proof_path?: string;
+          p_reference_number: string;
+        };
+        Returns: string;
+      };
       update_member: {
         Args: {
           p_branch_ids: string[];
@@ -1809,10 +2043,13 @@ export type Database = {
         | "payment_rejected";
       cutoff_schedule: "weekly" | "semi_monthly" | "monthly";
       deposit_type: "fixed" | "percent";
+      fee_entry_kind: "booking_fee" | "adjustment";
       member_role: "owner" | "manager" | "staff";
       org_access_status: "active" | "restricted";
       org_category: "salon" | "barbershop" | "spa" | "nails" | "lashes_brows" | "other";
       org_restriction_reason: "overdue_statement" | "manual";
+      payment_method: "cash" | "gcash" | "maya" | "card" | "bank_transfer" | "other";
+      proof_status: "submitted" | "accepted" | "rejected" | "resubmission_requested" | "withdrawn";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1946,10 +2183,13 @@ export const Constants = {
       ],
       cutoff_schedule: ["weekly", "semi_monthly", "monthly"],
       deposit_type: ["fixed", "percent"],
+      fee_entry_kind: ["booking_fee", "adjustment"],
       member_role: ["owner", "manager", "staff"],
       org_access_status: ["active", "restricted"],
       org_category: ["salon", "barbershop", "spa", "nails", "lashes_brows", "other"],
       org_restriction_reason: ["overdue_statement", "manual"],
+      payment_method: ["cash", "gcash", "maya", "card", "bank_transfer", "other"],
+      proof_status: ["submitted", "accepted", "rejected", "resubmission_requested", "withdrawn"],
     },
   },
 } as const;

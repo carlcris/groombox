@@ -16,10 +16,10 @@
 -- `npm run db:seed:images` to put placeholder images at the seeded paths.
 --
 -- Bookings are placed relative to the time of the seed: a confirmed BGC booking that crosses
--- midnight, a guest's held and expired holds and a client's cancelled booking at Makati, and a
--- confirmed booking at the restricted Kanto Barbers. Phase 4 adds payment proofs and the deposit
--- review statuses, phase 5 walk-ins and visits in progress, and phase 6 completed sales; later
--- phases add statements (docs/backend-schema.md §15).
+-- midnight; at Makati a guest's held and expired holds, a client's cancelled booking, and bookings
+-- in every deposit review status; and a confirmed booking at the restricted Kanto Barbers. Payment
+-- proofs cover every status, and each accepted deposit has its fee entry. Phase 5 adds walk-ins and
+-- visits in progress, phase 6 completed sales, and phase 8 statements (docs/backend-schema.md §15).
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -268,7 +268,7 @@ from (select private.business_date(now(), 'Asia/Manila', '05:00') as today) as m
 insert into public.bookings (
   id, organization_id, branch_id, client_id, booked_by, staff_id, source, status, start_at, end_at, business_date,
   service_total, deposit_amount, convenience_fee, amount_due, payment_instructions_snapshot, policy_acceptance_metadata,
-  hold_expires_at, cancellation_metadata
+  hold_expires_at, review_expires_at, cancellation_metadata
 )
 select
   seeded.id, seeded.organization_id, seeded.branch_id, seeded.client_id, seeded.booked_by, seeded.staff_id, 'online',
@@ -279,7 +279,7 @@ select
     'cancellation_policy', o.cancellation_policy, 'privacy_notice_version', '2026-11-05',
     'accepted_at', now() - interval '2 hours'
   ),
-  seeded.hold_expires_at, seeded.cancellation_metadata
+  seeded.hold_expires_at, seeded.review_expires_at, seeded.cancellation_metadata
 from seed_dates d
 cross join lateral (
   values
@@ -288,25 +288,26 @@ cross join lateral (
      '30000000-0000-0000-0000-000000000002'::uuid, '90000000-0000-0000-0000-000000000001'::uuid,
      '10000000-0000-0000-0000-000000000007'::uuid, '70000000-0000-0000-0000-000000000003'::uuid, 'confirmed',
      (d.bgc_date + time '23:45') at time zone 'Asia/Manila', 75, 1000.00, 100.00, 30.00,
-     now() - interval '105 minutes', null::jsonb),
+     now() - interval '105 minutes', now() - interval '90 minutes', null::jsonb),
     -- The guest's haircut, held for the next 15 minutes.
     ('80000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001',
      '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000002',
      '10000000-0000-0000-0000-000000000008', '70000000-0000-0000-0000-000000000001', 'held',
      (d.makati_date + time '15:00') at time zone 'Asia/Manila', 45, 350.00, 100.00, 10.50,
-     now() + interval '15 minutes', null),
+     now() + interval '15 minutes', null::timestamptz, null),
     -- The guest's earlier hair color hold, which ran out.
     ('80000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001',
      '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000002',
      '10000000-0000-0000-0000-000000000008', '70000000-0000-0000-0000-000000000002', 'hold_expired',
      (d.makati_date + time '13:00') at time zone 'Asia/Manila', 135, 2500.00, 500.00, 50.00,
-     now() - interval '1 hour', null),
-    -- Bea's haircut, which she cancelled.
+     now() - interval '1 hour', null, null),
+    -- Bea's haircut: she reported paying, then cancelled, which withdrew the proof. The refund is
+    -- still to be recorded.
     ('80000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000001',
      '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001',
      '10000000-0000-0000-0000-000000000007', '70000000-0000-0000-0000-000000000001', 'cancelled',
      (d.makati_date + time '16:00') at time zone 'Asia/Manila', 45, 350.00, 100.00, 10.50,
-     now() - interval '90 minutes',
+     now() - interval '90 minutes', now() + interval '10 hours',
      jsonb_build_object(
        'by', 'client', 'cancelled_by', '10000000-0000-0000-0000-000000000007', 'cancelled_at', now() - interval '100 minutes',
        'reason', 'Schedule changed'
@@ -316,10 +317,35 @@ cross join lateral (
      '30000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000003',
      '10000000-0000-0000-0000-000000000007', '70000000-0000-0000-0000-000000000004', 'confirmed',
      (d.cubao_date + time '10:00') at time zone 'Asia/Manila', 35, 250.00, 100.00, 10.00,
-     now() - interval '3 hours', null)
+     now() - interval '3 hours', now() - interval '2 hours', null),
+    -- Bea's haircut with Carlo, payment reported and waiting for review.
+    ('80000000-0000-0000-0000-000000000006', '20000000-0000-0000-0000-000000000001',
+     '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001',
+     '10000000-0000-0000-0000-000000000007', '70000000-0000-0000-0000-000000000002', 'payment_submitted',
+     (d.makati_date + time '17:00') at time zone 'Asia/Manila', 45, 350.00, 100.00, 10.50,
+     now() - interval '50 minutes', now() + interval '11 hours', null),
+    -- The guest's haircut with Jenny: the shop asked them to send their payment details again.
+    ('80000000-0000-0000-0000-000000000007', '20000000-0000-0000-0000-000000000001',
+     '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000002',
+     '10000000-0000-0000-0000-000000000008', '70000000-0000-0000-0000-000000000001', 'needs_resubmission',
+     (d.makati_date + time '11:00') at time zone 'Asia/Manila', 45, 350.00, 100.00, 10.50,
+     now() - interval '3 hours', now() + interval '10 hours', null),
+    -- Bea's haircut with Carlo: the review time passed, so it is flagged and keeps its slot.
+    ('80000000-0000-0000-0000-000000000008', '20000000-0000-0000-0000-000000000001',
+     '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001',
+     '10000000-0000-0000-0000-000000000007', '70000000-0000-0000-0000-000000000002', 'review_expired_pending_resolution',
+     (d.makati_date + time '18:00') at time zone 'Asia/Manila', 45, 350.00, 100.00, 10.50,
+     now() - interval '14 hours', now() - interval '1 hour', null),
+    -- The guest's haircut with Jenny, whose payment the shop rejected. The refund is still to be
+    -- recorded.
+    ('80000000-0000-0000-0000-000000000009', '20000000-0000-0000-0000-000000000001',
+     '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000002',
+     '10000000-0000-0000-0000-000000000008', '70000000-0000-0000-0000-000000000001', 'payment_rejected',
+     (d.makati_date + time '12:00') at time zone 'Asia/Manila', 45, 350.00, 100.00, 10.50,
+     now() - interval '5 hours', now() + interval '6 hours', null)
 ) as seeded (
   id, organization_id, branch_id, client_id, booked_by, staff_id, status, start_at, length_minutes, service_total,
-  deposit_amount, convenience_fee, hold_expires_at, cancellation_metadata
+  deposit_amount, convenience_fee, hold_expires_at, review_expires_at, cancellation_metadata
 )
 join public.branches b on b.id = seeded.branch_id
 join public.organizations o on o.id = seeded.organization_id;
@@ -337,7 +363,53 @@ values
   ('80000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
    'Haircut', 45, 0, 350.00, 1),
   ('80000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000005',
-   'Barber cut', 30, 5, 250.00, 1);
+   'Barber cut', 30, 5, 250.00, 1),
+  ('80000000-0000-0000-0000-000000000006', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
+   'Haircut', 45, 0, 350.00, 1),
+  ('80000000-0000-0000-0000-000000000007', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
+   'Haircut', 45, 0, 350.00, 1),
+  ('80000000-0000-0000-0000-000000000008', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
+   'Haircut', 45, 0, 350.00, 1),
+  ('80000000-0000-0000-0000-000000000009', '20000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000003',
+   'Haircut', 45, 0, 350.00, 1);
+
+-- Payment proofs in every status. Screenshots are optional and the seed has none.
+insert into public.payment_proofs (
+  booking_id, organization_id, branch_id, submitted_by, reference_number, amount_paid, method, note, status, reviewed_by,
+  reviewed_at, review_note, created_at
+)
+values
+  ('80000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002',
+   '10000000-0000-0000-0000-000000000007', 'MAYA-5521-0091', 130.00, 'maya', null, 'accepted',
+   '10000000-0000-0000-0000-000000000003', now() - interval '80 minutes', null, now() - interval '100 minutes'),
+  ('80000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000003',
+   '10000000-0000-0000-0000-000000000007', 'GC-7781-2040', 110.00, 'gcash', null, 'accepted',
+   '10000000-0000-0000-0000-000000000005', now() - interval '150 minutes', null, now() - interval '170 minutes'),
+  ('80000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
+   '10000000-0000-0000-0000-000000000007', 'GC-1180-3355', 110.50, 'gcash', null, 'withdrawn',
+   null, null, null, now() - interval '105 minutes'),
+  ('80000000-0000-0000-0000-000000000006', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
+   '10000000-0000-0000-0000-000000000007', 'GC-4402-1187', 110.50, 'gcash', 'Paid from my sister''s account.', 'submitted',
+   null, null, null, now() - interval '1 hour'),
+  ('80000000-0000-0000-0000-000000000007', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
+   '10000000-0000-0000-0000-000000000008', 'GC-0000-1111', 100.00, 'gcash', null, 'resubmission_requested',
+   '10000000-0000-0000-0000-000000000004', now() - interval '2 hours', 'We received ₱100. Please send the remaining ₱10.50 and report again.',
+   now() - interval '170 minutes'),
+  ('80000000-0000-0000-0000-000000000008', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
+   '10000000-0000-0000-0000-000000000007', 'BPI-88812', 110.50, 'bank_transfer', null, 'submitted',
+   null, null, null, now() - interval '13 hours'),
+  ('80000000-0000-0000-0000-000000000009', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
+   '10000000-0000-0000-0000-000000000008', 'GC-9999-0000', 110.50, 'gcash', null, 'rejected',
+   '10000000-0000-0000-0000-000000000002', now() - interval '4 hours', 'No payment with this reference reached our account.',
+   now() - interval '290 minutes');
+
+-- The fee owed to GroomBox for each accepted deposit.
+insert into public.fee_entries (organization_id, branch_id, kind, booking_id, amount, accrued_at, created_by)
+values
+  ('20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', 'booking_fee',
+   '80000000-0000-0000-0000-000000000001', 30.00, now() - interval '80 minutes', '10000000-0000-0000-0000-000000000003'),
+  ('20000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000003', 'booking_fee',
+   '80000000-0000-0000-0000-000000000005', 10.00, now() - interval '150 minutes', '10000000-0000-0000-0000-000000000005');
 
 drop table seed_dates;
 

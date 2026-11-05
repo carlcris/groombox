@@ -58,11 +58,11 @@ set local role authenticated;
 
 -- 1–2. Members by branch scope and access status
 select pg_temp.act_as('10000000-0000-0000-0000-000000000002', false);
-select is(pg_temp.visible_booking_ids(), '01,02,03,04', 'the owner reads every booking of the organization');
+select is(pg_temp.visible_booking_ids(), '01,02,03,04,06,07,08,09', 'the owner reads every booking of the organization');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000003', false);
 select is(pg_temp.visible_booking_ids(), '01', 'a manager reads only their branch''s bookings');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000004', false);
-select is(pg_temp.visible_booking_ids(), '02,03,04', 'staff read only their branch''s bookings');
+select is(pg_temp.visible_booking_ids(), '02,03,04,06,07,08,09', 'staff read only their branch''s bookings');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000005', false);
 select is(pg_temp.visible_booking_ids(), '', 'the owner of a restricted organization reads no bookings');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000006', false);
@@ -70,15 +70,15 @@ select is(pg_temp.visible_booking_ids(), '', 'staff of a restricted organization
 
 -- 3. Clients and guests see what they created, across organizations
 select pg_temp.act_as('10000000-0000-0000-0000-000000000007', false);
-select is(pg_temp.visible_booking_ids(), '01,04,05', 'a client reads their own bookings at both organizations');
+select is(pg_temp.visible_booking_ids(), '01,04,05,06,08', 'a client reads their own bookings at both organizations');
 select is(
   (select count(*)::integer from public.booking_services where booking_id::text like '80000000-%'),
-  3,
+  5,
   'a client reads the services of their own bookings only'
 );
 select is((select count(*)::integer from public.clients), 0, 'a client reads no client records');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000008', true);
-select is(pg_temp.visible_booking_ids(), '02,03', 'a guest reads the bookings made in their session');
+select is(pg_temp.visible_booking_ids(), '02,03,07,09', 'a guest reads the bookings made in their session');
 
 -- 4. Client records belong to the owner and managers
 select pg_temp.act_as('10000000-0000-0000-0000-000000000003', false);
@@ -214,7 +214,7 @@ select is(
 );
 select is(pg_temp.visible_booking_ids(), '02', 'the new device reads the booking it took over');
 select pg_temp.act_as('10000000-0000-0000-0000-000000000008', true);
-select is(pg_temp.visible_booking_ids(), '03', 'the old device loses access to it');
+select is(pg_temp.visible_booking_ids(), '03,07,09', 'the old device loses access to it');
 select ok(
   (select not viewer_is_creator and booked_by_guest from public.get_booking_by_code(
      (select code from seeded_code where booking_id = '80000000-0000-0000-0000-000000000002'))),

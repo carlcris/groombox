@@ -26,6 +26,7 @@ import { Route as ShopSetupRouteImport } from './routes/shop/setup'
 import { Route as ShopTeamRouteImport } from './routes/shop/team'
 import { Route as BBranchSlugIndexRouteImport } from './routes/b.$branchSlug.index'
 import { Route as BBranchSlugBookRouteImport } from './routes/b.$branchSlug.book'
+import { Route as ShopBranchIdDepositsRouteImport } from './routes/shop/$branchId/deposits'
 import { Route as ShopBranchIdFloorRouteImport } from './routes/shop/$branchId/floor'
 import { Route as ShopBranchIdSetupRouteImport } from './routes/shop/$branchId/setup'
 import { Route as ShopSetupIndexRouteImport } from './routes/shop/setup/index'
@@ -120,6 +121,11 @@ const BBranchSlugBookRoute = BBranchSlugBookRouteImport.update({
   path: '/book',
   getParentRoute: () => BBranchSlugRoute,
 } as any)
+const ShopBranchIdDepositsRoute = ShopBranchIdDepositsRouteImport.update({
+  id: '/deposits',
+  path: '/deposits',
+  getParentRoute: () => ShopBranchIdRoute,
+} as any)
 const ShopBranchIdFloorRoute = ShopBranchIdFloorRouteImport.update({
   id: '/floor',
   path: '/floor',
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/shop/team': typeof ShopTeamRoute
   '/shop/': typeof ShopIndexRoute
   '/b/$branchSlug/book': typeof BBranchSlugBookRoute
+  '/shop/$branchId/deposits': typeof ShopBranchIdDepositsRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
   '/shop/setup/branches': typeof ShopSetupBranchesRoute
@@ -202,6 +209,7 @@ export interface FileRoutesByTo {
   '/shop/team': typeof ShopTeamRoute
   '/shop': typeof ShopIndexRoute
   '/b/$branchSlug/book': typeof BBranchSlugBookRoute
+  '/shop/$branchId/deposits': typeof ShopBranchIdDepositsRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
   '/shop/setup/branches': typeof ShopSetupBranchesRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/shop/team': typeof ShopTeamRoute
   '/shop/': typeof ShopIndexRoute
   '/b/$branchSlug/book': typeof BBranchSlugBookRoute
+  '/shop/$branchId/deposits': typeof ShopBranchIdDepositsRoute
   '/shop/$branchId/floor': typeof ShopBranchIdFloorRoute
   '/shop/$branchId/setup': typeof ShopBranchIdSetupRoute
   '/shop/setup/branches': typeof ShopSetupBranchesRoute
@@ -259,6 +268,7 @@ export interface FileRouteTypes {
     | '/shop/team'
     | '/shop/'
     | '/b/$branchSlug/book'
+    | '/shop/$branchId/deposits'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
     | '/shop/setup/branches'
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
     | '/shop/team'
     | '/shop'
     | '/b/$branchSlug/book'
+    | '/shop/$branchId/deposits'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
     | '/shop/setup/branches'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/shop/team'
     | '/shop/'
     | '/b/$branchSlug/book'
+    | '/shop/$branchId/deposits'
     | '/shop/$branchId/floor'
     | '/shop/$branchId/setup'
     | '/shop/setup/branches'
@@ -454,6 +466,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BBranchSlugBookRouteImport
       parentRoute: typeof BBranchSlugRoute
     }
+    '/shop/$branchId/deposits': {
+      id: '/shop/$branchId/deposits'
+      path: '/deposits'
+      fullPath: '/shop/$branchId/deposits'
+      preLoaderRoute: typeof ShopBranchIdDepositsRouteImport
+      parentRoute: typeof ShopBranchIdRoute
+    }
     '/shop/$branchId/floor': {
       id: '/shop/$branchId/floor'
       path: '/floor'
@@ -514,11 +533,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface ShopBranchIdRouteChildren {
+  ShopBranchIdDepositsRoute: typeof ShopBranchIdDepositsRoute
   ShopBranchIdFloorRoute: typeof ShopBranchIdFloorRoute
   ShopBranchIdSetupRoute: typeof ShopBranchIdSetupRoute
 }
 
 const ShopBranchIdRouteChildren: ShopBranchIdRouteChildren = {
+  ShopBranchIdDepositsRoute: ShopBranchIdDepositsRoute,
   ShopBranchIdFloorRoute: ShopBranchIdFloorRoute,
   ShopBranchIdSetupRoute: ShopBranchIdSetupRoute,
 }

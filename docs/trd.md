@@ -152,7 +152,10 @@ All jobs are idempotent. Cut-off dates: weekly on the set weekday, semi-monthly 
 Subscriptions are scoped by branch or by user:
 
 - Floor view: bookings for the open branch and day.
-- Deposit review badge: payment proofs awaiting review for the member's branches.
+- Deposit review badge and list: the open branch's payment proofs and bookings.
+- Booking page: the booking, for its creator and the branch's members.
+
+`bookings`, `payment_proofs`, and `notifications` are in the `supabase_realtime` publication; Realtime sends each subscriber only rows their row-level security allows.
 - Notifications: the signed-in user's rows.
 
 Realtime events trigger a TanStack Query refetch; they are not applied to the cache directly.
